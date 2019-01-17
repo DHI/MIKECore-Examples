@@ -54,5 +54,37 @@ namespace DHI.SDK.Examples
 
     }
 
+    /// <summary>
+    /// Example of reading 1D axis from dfs1 file
+    /// </summary>
+    public void Read1DAxis(string filename)
+    {
+      // Open the file as a dfs1 file
+      Dfs1File dfs1File = DfsFileFactory.Dfs1FileOpen(filename);
+
+      switch (dfs1File.SpatialAxis.AxisType)
+      {
+        case SpaceAxisType.EqD1:
+          // Spatial axis for this file is a 1D equidistant axis
+          IDfsAxisEqD1 axisEqD1 = ((IDfsAxisEqD1)dfs1File.SpatialAxis);
+          Console.Out.WriteLine("x0    = " + axisEqD1.X0);
+          Console.Out.WriteLine("dx    = " + axisEqD1.Dx);
+          Console.Out.WriteLine("count = " + axisEqD1.XCount);
+          break;
+        case SpaceAxisType.NeqD1:
+          // Spatial axis for this file is a 1D non-equidistant axis, 
+          // which is similar to a curve-linear 1D axis.
+          IDfsAxisNeqD1 axisNeqD1 = ((IDfsAxisNeqD1)dfs1File.SpatialAxis);
+          for (int i = 0; i < axisNeqD1.Coordinates.Length; i++)
+          {
+            Coords coord = axisNeqD1.Coordinates[i];
+            Console.Out.WriteLine("{0,10} {1,10} {2,10}", coord.X, coord.Y, coord.Z);
+          }
+          break;
+      }
+
+      dfs1File.Close();
+    }
+
   }
 }
