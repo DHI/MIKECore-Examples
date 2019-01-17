@@ -1,0 +1,17 @@
+// Created     : 2007-03-14 13:38:43
+// DLL id      : c:\Work\Main\bin\pfs2004.dll
+// PFS version : Mar 11 2007 20:13:10
+
+[Run11]
+   key1 = 2, true
+   key3 = 3.3, 4, 'someText'
+   key3 = '<CLOB:2,-2.75,7.07,4,7.07>'
+   [Results]
+      [Result]      
+         outid = 'default out'
+         file = |.\output.res11|
+      EndSect  // Result 
+
+   EndSect  // Results
+
+EndSect  // Run11

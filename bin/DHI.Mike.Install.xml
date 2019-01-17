@@ -1,0 +1,265 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>DHI.Mike.Install</name>
+    </assembly>
+    <members>
+        <member name="T:DHI.Mike.Install.MikeImport">
+            <summary>
+            Import MIKE version for use in application.
+            <para>
+            MIKE assemblies are by default installed in a local installation folder, and not in the GAC (Global Assembly Cache).
+            The setup methods will make your application find the MIKE assemblies in the folder they are installed in.
+            </para>
+            <para>
+            The first call of any of the setup methods takes precedense. Any subsequent calls will be ignored.
+            </para>
+            <para>
+            The setup method must be called BEFORE any method using MIKE libraries is called, i.e. it is not sufficient
+            to call it as the first thing in that method using the MIKE libraries. Often this can be achieved
+            by having this code in the static constructor (this will not work if there are static variables from MIKE
+            libraries in the class, then the setup method must be called before any access to that class).
+            </para>
+            </summary>
+            <remarks>
+            The setup methods are utilizing the <see cref="E:System.AppDomain.AssemblyResolve"/> event of the <see cref="P:System.AppDomain.CurrentDomain"/>.
+            </remarks>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeImport._setupEnvCalled">
+            <summary> Bool set when environement has been set up</summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeImport._activeProduct">
+            <summary> Currently active product</summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeImport._assemblyBinRoot">
+            <summary> Root folder of assemblies in 32 bit mode </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeImport._assemblyBinRootX64">
+            <summary> Root folder of assemblies in 64 bit mode </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeImport._lock">
+            <summary> Lock object, assuring only on thread can call setup at the same time</summary>
+        </member>
+        <member name="M:DHI.Mike.Install.MikeImport.ActiveProduct">
+            <summary>
+            Current active product, set up by one of the Setup methods
+            <para>
+            If current active product is enabled by the <see cref="M:DHI.Mike.Install.MikeImport.SetupInstallRoot(System.String,System.Boolean)"/>
+            method, only the <see cref="F:DHI.Mike.Install.MikeProductInfo.InstallRoot"/> will be set,
+            the remainder of the <see cref="T:DHI.Mike.Install.MikeProductInfo"/> will be null.
+            </para>
+            </summary>
+        </member>
+        <member name="M:DHI.Mike.Install.MikeImport.SetupLatest">
+            <summary>
+            Setup to use the latest version installed.
+            <para>
+            This is only applicable to scripting environments where the using code is not
+            tightly coupled to a specific major version.
+            </para>
+            </summary>
+        </member>
+        <member name="M:DHI.Mike.Install.MikeImport.SetupLatest(System.String[])">
+            <summary>
+            Setup to use the latest version containing all of the <paramref name="components"/>.
+            <para>
+            This is only applicable to scripting environments where the using code is not
+            tightly coupled to a specific major version.
+            </para>
+            </summary>
+            <param name="components">Components that must be available. All of the components needs to be available in the given version</param>
+            <returns>true on success, false if no version found</returns>
+        </member>
+        <member name="M:DHI.Mike.Install.MikeImport.Setup(System.Version,System.String[])">
+            <summary>
+            Setup to use the specific version and containing all of the <paramref name="components"/>.
+            <para>
+            The <paramref name="version"/> can contain build builder but need not. If build number is not provided,
+            all versions with the same major+minor are considered.
+            </para>
+            </summary>
+            <param name="version">Version to use</param>
+            <param name="components">Components that must be available. All of the components needs to be available in the given version</param>
+            <returns>true on success, false if no version found</returns>
+        </member>
+        <member name="M:DHI.Mike.Install.MikeImport.Setup(System.Int32,System.String[])">
+            <summary>
+            Setup to use the specified major version and containing all of the <paramref name="components"/>.
+            </summary>
+            <param name="majorVersion">Major version to use</param>
+            <param name="components">Components that must be available. All of the components needs to be available in the given version</param>
+            <returns>true on success, false if no version found</returns>
+        </member>
+        <member name="M:DHI.Mike.Install.MikeImport.Setup(System.Func{System.Version,System.Boolean},System.String[])">
+            <summary>
+            Setup to use the latest version fullfilling the <paramref name="filter"/> and containing all of the <paramref name="components"/>.
+            </summary>
+            <param name="filter">Version filter</param>
+            <param name="components">Components that must be available. All of the components needs to be available in the given version</param>
+            <returns>true on success, false if no version found</returns>
+            <example>
+            To use the installation that includes MIKE Core in version 17, but after 17_0.
+            <code>
+              MikeImport.Setup(ver => ver.Major == 17 &amp;&amp; ver.Minor > 0, MikeProducts.MikeCore)
+            </code>
+            </example>
+        </member>
+        <member name="M:DHI.Mike.Install.MikeImport.SetupInstallRoot(System.String,System.Boolean)">
+            <summary>
+            Setup specified MIKE installation folder.
+            <para>
+            This can be used when MIKE is installed manually, i.e. not through installers (xcopy deployed),
+            and hence no installation information is stored centrally (e.g. in the registry)
+            </para>
+            <para>
+            Only the first call to this method has an effect. Any subsequent calls are ignored.
+            </para>
+            </summary>
+            <param name="installRoot">Root of the MIKE installation folder</param>
+            <param name="updateEnvironmentPath">Set to true to also update environment PATH variable</param>
+        </member>
+        <member name="M:DHI.Mike.Install.MikeImport.SetupEnvironmentPath(System.String)">
+            <summary>
+            Add MIKE bin folder to path environment
+            <para>
+            The argument <paramref name="mikeInstallRoot"/> is the root of the installation. The bin or bin\x64
+            will automatically be appended. 
+            </para>
+            </summary>
+            <param name="mikeInstallRoot">Root of the MIKE installation folder</param>
+        </member>
+        <member name="M:DHI.Mike.Install.MikeImport.ResolveAssembly(System.Object,System.ResolveEventArgs)">
+            <summary>
+            Tries to find assembly in <see cref="F:DHI.Mike.Install.MikeImport._assemblyBinRoot"/> or <see cref="F:DHI.Mike.Install.MikeImport._assemblyBinRootX64"/>.
+            </summary>
+            <returns>Assembly, or null if not found</returns>
+        </member>
+        <member name="M:DHI.Mike.Install.MikeImport.InstalledProducts">
+            <summary>
+            List all installed products, ordered by version and product name.
+            </summary>
+        </member>
+        <member name="M:DHI.Mike.Install.MikeImport.InstalledVersions">
+            <summary>
+            List all installed versions
+            </summary>
+        </member>
+        <member name="M:DHI.Mike.Install.MikeImport.InstalledVersions(System.Func{System.Version,System.Boolean})">
+            <summary>
+            List installed versions that fullfill the <paramref name="filter"/> condition.
+            </summary>
+            <example>
+            To list all version 17 installations AFTER V17_0:
+            <code>
+              MikeVersion[] versions = InstalledVersions(mv => mv > MikeVersion.V17_0 &amp;&amp; mv.MajorVersion() == MikeMajorVersion.V17)
+            </code>
+            </example>
+        </member>
+        <member name="M:DHI.Mike.Install.MikeImport.ReadVersionRegistry(Microsoft.Win32.RegistryKey,System.String)">
+            <summary>
+            Read registry on form "Software\DHI\[2019]"
+            </summary>
+        </member>
+        <member name="M:DHI.Mike.Install.MikeImport.ReadProductRegistry(Microsoft.Win32.RegistryKey,System.String)">
+            <summary>
+            Read registry on form "Software\DHI\[MIKE Zero]\[2019]"
+            </summary>
+        </member>
+        <member name="M:DHI.Mike.Install.MikeImport.VersionEquals(System.Version,System.Version)">
+            <summary>
+            Comparing requested version against actual version. Major and Minor must always equal,
+            but if requested build or revision is not defined (-1), they are not compared
+            </summary>
+        </member>
+        <member name="T:DHI.Mike.Install.MikeProductInfo">
+            <summary>
+            Information of a product.
+            </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProductInfo.Product">
+            <summary> Product name. </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProductInfo.Version">
+            <summary> Version of product </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProductInfo.InstallRoot">
+            <summary> Root of installation </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProductInfo.Components">
+            <summary> Components included in installation </summary>
+        </member>
+        <member name="M:DHI.Mike.Install.MikeProductInfo.Compare(DHI.Mike.Install.MikeProductInfo,DHI.Mike.Install.MikeProductInfo)">
+            <summary>
+            Compare method for sorting first on <see cref="F:DHI.Mike.Install.MikeProductInfo.Version"/> and secondary on <see cref="F:DHI.Mike.Install.MikeProductInfo.Product"/>
+            </summary>
+        </member>
+        <member name="T:DHI.Mike.Install.MikeProducts">
+            <summary>
+            Static class listing currently known product/component strings
+            </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.MikeCore">
+            <summary> "MIKE Core", basically the content of the MIKE SDK installer </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.MikeZero">
+            <summary> "MIKE Zero" </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.MikeUrban">
+            <summary> "MIKE URBAN" </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.MikeHydro">
+            <summary> "MIKE HYDRO" </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.Mike1D">
+            <summary> "MIKE 1D" </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.Mike21">
+            <summary> "MIKE 21" </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.Mike3">
+            <summary> "MiMIKE 3ke3" </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.FeFlow">
+            <summary> "FEFLOW" </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.MikeSHE">
+            <summary> "FEFLOW" </summary>
+        </member>
+        <member name="M:DHI.Mike.Install.MikeProducts.GetComponents(System.String,System.Version)">
+            <summary>
+            Get components for product. The components may depend on version of the product.
+            </summary>
+            <param name="productRegName">Name of product in registry</param>
+            <param name="version">Version of product</param>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.ProductComponents">
+            <summary>
+            Mapping components contained in a product.
+            </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.RegNameSDK">
+            <summary> Name of MIKE SDK key in DHI registry </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.RegNameM1D">
+            <summary> Name of MIKE SDK key in DHI registry </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.RegNameMZ">
+            <summary> Name of MIKE Zero key in DHI registry </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.RegNameMU">
+            <summary> Name of MIKE URBAN key in DHI registry </summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.ComponentsSDK">
+            <summary> Components contained in a MIKE SDK installation (as of 2019)</summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.ComponentsM1D">
+            <summary> Components contained in a MIKE SDK installation (as of 2019)</summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.ComponentsMZ">
+            <summary> Components contained in a MIKE Zero installation (as of 2019)</summary>
+        </member>
+        <member name="F:DHI.Mike.Install.MikeProducts.ComponentsMU">
+            <summary> Components contained in a MIKE URBAN installation (as of 2019)</summary>
+        </member>
+    </members>
+</doc>

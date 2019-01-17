@@ -1,0 +1,2129 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>DHI.Projections</name>
+    </assembly>
+    <members>
+        <member name="T:DHI.Projections.Cartography">
+            <summary>
+            A cartography object handles a map projection and a local grid 
+            that can be translated and rotated relative to the projected
+            coordinate system.
+            <para>
+            There are 3 levels of coordinates:
+            Geographical coordinates (longitude, latitude) in degrees, 
+            projection coordinates (easting, northing), and
+            local/model/user grid coordinates (x,y).
+            </para>
+            <para>
+            The <see cref="P:DHI.Projections.Cartography.ProjectionString"/> defines the mapping from geographical 
+            coordinates to projection coordinates.
+            </para>
+            <para>
+            The <see cref="P:DHI.Projections.Cartography.LatOrigin"/>, <see cref="P:DHI.Projections.Cartography.LonOrigin"/> and 
+            <see cref="P:DHI.Projections.Cartography.Orientation"/> defines the origin and the 
+            orientation of the local grid coordinates. It defines how 
+            the local grid coordinate system is translated and rotated.
+            This kind of local grid coordinate system is used for e.g. a 2D grid in a dfs2 file.
+            </para>
+            <para>
+            See <see cref="P:DHI.Projections.Cartography.Orientation"/> for the definition of the orientation.
+            The local grid are rotated around its origin.
+            </para>
+            <para>
+            If <see cref="P:DHI.Projections.Cartography.LonOrigin"/> is zero, and <see cref="P:DHI.Projections.Cartography.LatOrigin"/> and <see cref="M:DHI.Projections.MapProjection.ProjectionOrigin(System.String,System.Double@,System.Double@)"/>
+            matches the origin of the projection coordinate system (from <see cref="T:DHI.Projections.MapProjection"/>), 
+            then projection coordinates equals local grid coordinates. 
+            Example: UTM-31 has projection origin at (lon,lat) = (3,0). 
+            </para>
+            </summary>
+            <example>
+            <code>
+              // The abbreviation for the long WKT projection string
+              utm33String = "UTM-33"; 
+            
+              // Create a Cartography object with a local grid origin at lon-lat (17,55)
+              // rotated -45 degrees from true north.
+              Cartography cart = new Cartography(utm33String, 17, 55, -45);
+              double east, north, x, y;
+            
+              // Convert from geographical to map projection coordinates
+              cart.Geo2Proj(17, 55, out east, out north);
+            
+              // Convert from geographical to local grid coordinates
+              cart.Geo2Xy(17, 55, out x, out y);
+            </code>
+            </example>
+            
+        </member>
+        <member name="M:DHI.Projections.Cartography.#ctor(System.String,System.Boolean)">
+            <summary>
+            Create and initialize a Cartography object using the
+            specified projection string.
+            </summary>
+            <param name="projectionString">A string in the WKT format for a spatial reference system, or one of the abbreviations</param>
+            <param name="validateProjectionString">Bool specifying if projectionstrings should be validated or not. 
+            It is fairly expensive to validate the projection strings, and the validation can be skipped by setting this flag to false. 
+            Then the user must beforehand check that the projection is valid by calling <see cref="M:DHI.Projections.MapProjection.IsValid(System.String)"/>. </param>
+        </member>
+        <member name="M:DHI.Projections.Cartography.#ctor(System.String,System.Double,System.Double,System.Boolean)">
+            <summary>
+            Create and initialize a cartography object using the
+            specified projection string, setting the origin of the user
+            defined local grid coordinates to the 
+            <paramref name="lonOrigin"/>, <paramref name="latOrigin"/>
+            </summary>
+            <param name="projectionString">A string in the WKT format for a spatial reference system, or one of the abbreviations</param>
+            <param name="lonOrigin">Longitude coordinate of the local grid origin</param>
+            <param name="latOrigin">Latitude coordinate of the local grid origin</param>
+            <param name="validateProjectionString">Bool specifying if projectionstrings should be validated or not. 
+            It is fairly expensive to validate the projection strings, and the validation can be skipped by setting this flag to false. 
+            Then the user must beforehand check that the projection is valid by calling <see cref="M:DHI.Projections.MapProjection.IsValid(System.String)"/>. </param>
+        </member>
+        <member name="M:DHI.Projections.Cartography.#ctor(System.String,System.Double,System.Double,System.Double,System.Boolean)">
+            <summary>
+            Create and initialize a cartography object using the
+            specified projection string, setting the origin of the user
+            defined local grid coordinates to the 
+            <paramref name="lonOrigin"/>, <paramref name="latOrigin"/>, rotated
+            <paramref name="orientation"/>.
+            </summary>
+            <param name="projectionString">A string in the WKT format for a spatial reference system, or one of the abbreviations</param>
+            <param name="lonOrigin">Longitude coordinate of the local grid origin</param>
+            <param name="latOrigin">Latitude coordinate of the local grid origin</param>
+            <param name="orientation">Orientation of the cartography class grid, rotation in degreesn clockwise from geographical north</param>
+            <param name="validateProjectionString">Bool specifying if projectionstrings should be validated or not. 
+            It is fairly expensive to validate the projection strings, and the validation can be skipped by setting this flag to false. 
+            Then the user must beforehand check that the projection is valid by calling <see cref="M:DHI.Projections.MapProjection.IsValid(System.String)"/>. </param>
+        </member>
+        <member name="M:DHI.Projections.Cartography.Finalize">
+            <summary>
+            Release ressources on the unmanaged side when garbage collected.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.Cartography.Dispose">
+            <summary>
+            Release ressources on the unmanaged side.
+            </summary>
+            <remarks>
+            The Dispose method must be private; The user should not be able 
+            to call this method directly, since there can be a MapProjection 
+            object out there that needs the unmanaged MzCartography class for 
+            its work.
+            </remarks>
+        </member>
+        <member name="P:DHI.Projections.Cartography.Projection">
+            <summary>
+            Get the map projection that this cartography object uses.
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.Cartography.ProjectionName">
+            <summary>
+            The short name of a projection. 
+            <para>
+            The short name is not unique amongst all WKT projections
+            </para>
+            <para>
+            If the <see cref="P:DHI.Projections.Cartography.ProjectionString"/> is not a WKT projection string, 
+            the <see cref="P:DHI.Projections.Cartography.ProjectionString"/> itself is returned as the short name.
+            </para>
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.Cartography.ProjectionString">
+            <summary>
+            Returns the WKT projection string, or one of the projection abbreviation strings.
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.Cartography.LonOrigin">
+            <summary>
+            Get the origin longitude coordinate of the local grid coordinate system.
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.Cartography.LatOrigin">
+            <summary>
+            Get the origin latitude coordinate of the local grid coordinate system.
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.Cartography.Orientation">
+            <summary>
+            Get the orientation of the local grid coordinate system in the geographical coordinate system.
+            <para>
+            The orientation is the angle in degrees between true north and the coordinate 
+            system y-axis in degrees, measured positive clockwise from true north.
+            </para>
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.Cartography.EastOrigin">
+            <summary>
+            Get the origin easting coordinate of the local grid coordinate system.
+            <para>
+            For geographical map projections ((lon,lat) coordinates), this has no meaning (has the same value as the <see cref="P:DHI.Projections.Cartography.LonOrigin"/>)
+            </para>
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.Cartography.NorthOrigin">
+            <summary>
+            Get the origin northing coordinate of the local grid coordinate system.
+            <para>
+            For geographical map projections ((lon,lat) coordinates), this has no meaning (has the same value as the <see cref="P:DHI.Projections.Cartography.LatOrigin"/>)
+            </para>
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.Cartography.OrientationProj">
+            <summary>
+            Get the orientation of the local grid coordinate system in the projected coordinate system. 
+            <para>
+            The orientation is the angle in degrees between projection north and the coordinate 
+            system y-axis in degrees, measured positive clockwise from projection north.
+            </para>
+            <para>
+            For geographical map projections ((lon,lat) coordinates), this has no meaning (has the same value as the <see cref="P:DHI.Projections.Cartography.Orientation"/>)
+            </para>
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.Cartography.ProjectionNorth">
+            <summary>
+            Returns the angle between projection north and a line parallel to the 
+            local grid.
+            <para>
+            This is NOT the same as the <see cref="P:DHI.Projections.Cartography.Orientation"/>, the orientation
+            is towards true north, this is towards projection north.
+            </para>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.Cartography.GetTrueNorth(System.Double,System.Double)">
+            <summary>
+            Returns the angle between true north and a line parallel to the 
+            local grid y axis passing through (x,y).
+            <para>
+            The angle is in degrees, measured positive clockwise from true north.
+            </para>
+            </summary>
+            <param name="x">Local grid x coordinate</param>
+            <param name="y">Local grid y coordinate</param>
+        </member>
+        <member name="M:DHI.Projections.Cartography.Geo2Proj(System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from geographical coordinates to projection coordinates
+            </summary>
+            <param name="lon">Longitude</param>
+            <param name="lat">Latitude</param>
+            <param name="east">Easting</param>
+            <param name="north">Northing</param>
+        </member>
+        <member name="M:DHI.Projections.Cartography.Proj2Geo(System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from projection coordinates to geographical coordinates 
+            </summary>
+            <param name="east">Easting</param>
+            <param name="north">Northing</param>
+            <param name="lon">Longitude</param>
+            <param name="lat">Latitude</param>
+        </member>
+        <member name="M:DHI.Projections.Cartography.Geo2Xy(System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from geographical coordinates to local grid x-y coordinates
+            </summary>
+            <param name="lon">Longitude</param>
+            <param name="lat">Latitude</param>
+            <param name="x">Local grid x coordinate</param>
+            <param name="y">Local grid y coordinate</param>
+        </member>
+        <member name="M:DHI.Projections.Cartography.Xy2Geo(System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from local grid x-y coordinates to geographical coordinates 
+            </summary>
+            <param name="x">Local grid x coordinate</param>
+            <param name="y">Local grid y coordinate</param>
+            <param name="lon">Longitude</param>
+            <param name="lat">Latitude</param>
+        </member>
+        <member name="M:DHI.Projections.Cartography.Proj2Xy(System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from projetion coordinates to local grid x-y coordinates
+            </summary>
+            <param name="east">Easting</param>
+            <param name="north">Northing</param>
+            <param name="x">Local grid x coordinate</param>
+            <param name="y">Local grid y coordinate</param>
+        </member>
+        <member name="M:DHI.Projections.Cartography.Xy2Proj(System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from local grid x-y coordinates to projection coordinates 
+            </summary>
+            <param name="x">Local grid x coordinate</param>
+            <param name="y">Local grid y coordinate</param>
+            <param name="east">Easting</param>
+            <param name="north">Northing</param>
+        </member>
+        <member name="M:DHI.Projections.Cartography.CreateGeoOrigin(System.String,System.Double,System.Double,System.Double)">
+            <summary>
+            Create and initialize a cartography object using the
+            specified projection string, setting the origin of the user
+            defined local grid coordinates to the geographic coordinates
+            <paramref name="lonOrigin"/>, <paramref name="latOrigin"/>, rotated
+            <paramref name="orientation"/>.
+            </summary>
+            <param name="projectionString">A string in the WKT format for a spatial reference system, or one of the abbreviations</param>
+            <param name="lonOrigin">Longitude coordinate of the local grid origin</param>
+            <param name="latOrigin">Latitude coordinate of the local grid origin</param>
+            <param name="orientation">Orientation of the local grid, rotation in degreesn clockwise from geographical north</param>
+        </member>
+        <member name="M:DHI.Projections.Cartography.CreateGeoOrigin(System.String,System.Double,System.Double,System.Double,System.Boolean)">
+            <summary>
+            Create and initialize a cartography object using the
+            specified projection string, setting the origin of the user
+            defined local grid coordinates to the geographic coordinates
+            <paramref name="lonOrigin"/>, <paramref name="latOrigin"/>, rotated
+            <paramref name="orientation"/>.
+            </summary>
+            <param name="projectionString">A string in the WKT format for a spatial reference system, or one of the abbreviations</param>
+            <param name="lonOrigin">Longitude coordinate of the local grid origin</param>
+            <param name="latOrigin">Latitude coordinate of the local grid origin</param>
+            <param name="orientation">Orientation of the local grid, rotation in degreesn clockwise from geographical north</param>
+            <param name="validateProjectionString">Bool specifying if projectionstrings should be validated or not. 
+            It is fairly expensive to validate the projection strings, and the validation can be skipped by setting this flag to false. 
+            Then the user must beforehand check that the projection is valid by calling <see cref="M:DHI.Projections.MapProjection.IsValid(System.String)"/>. </param>
+        </member>
+        <member name="M:DHI.Projections.Cartography.CreateProjOrigin(System.String,System.Double,System.Double,System.Double)">
+            <summary>
+            Create and initialize a cartography object using the
+            specified projection string, setting the origin of the user
+            defined local grid coordinates to the projected coordinates
+            <paramref name="east"/>, <paramref name="north"/>, rotated
+            <paramref name="orientationProj"/> towards projection north.
+            </summary>
+            <param name="projectionString">A string in the WKT format for a spatial reference system, or one of the abbreviations</param>
+            <param name="east">Origin easting/x coordinate value of the local grid origin</param>
+            <param name="north">Origin northing/y coordinate value</param>
+            <param name="orientationProj">Orientation of the local grid, rotation in degreesn clockwise from projection north</param>
+        </member>
+        <member name="M:DHI.Projections.Cartography.CreateProjOrigin(System.String,System.Double,System.Double,System.Double,System.Boolean)">
+            <summary>
+            Create and initialize a cartography object using the
+            specified projection string, setting the origin of the user
+            defined local grid coordinates to the projected coordinates
+            <paramref name="east"/>, <paramref name="north"/>, rotated
+            <paramref name="orientationProj"/> towards projection north.
+            </summary>
+            <param name="projectionString">A string in the WKT format for a spatial reference system, or one of the abbreviations</param>
+            <param name="east">Origin easting/x coordinate value of the local grid origin</param>
+            <param name="north">Origin northing/y coordinate value</param>
+            <param name="orientationProj">Orientation of the local grid, rotation in degreesn clockwise from projection north</param>
+            <param name="validateProjectionString">Bool specifying if projectionstrings should be validated or not. 
+            It is fairly expensive to validate the projection strings, and the validation can be skipped by setting this flag to false. 
+            Then the user must beforehand check that the projection is valid by calling <see cref="M:DHI.Projections.MapProjection.IsValid(System.String)"/>. </param>
+        </member>
+        <member name="T:DHI.Projections.Function2DInterpBase`1">
+            <summary>
+            Base class (abstract) for interpolating values from a function in 2D.
+            <para>
+            This class can be used when a function in 2D space is too expensive to evaluate.
+            Function values are precalculated on a predefined 2D grid, and when calling <see cref="M:DHI.Projections.Function2DInterpBase`1.Interpolate(System.Double,System.Double)"/>,
+            values are interpolated from the values on the 2D grid.
+            </para>
+            <para>
+            Use the <see cref="M:DHI.Projections.Function2DInterpBase`1.Resample"/> function to increase the resolution of the 2D grid and thereby increase
+            the accuracy if the interpolation.
+            </para>
+            </summary>
+            <typeparam name="T">Type of value returned by 2D function</typeparam>
+        </member>
+        <member name="M:DHI.Projections.Function2DInterpBase`1.#ctor(System.Double,System.Double,System.Double,System.Double,System.Int32,System.Int32,System.Func{System.Double,System.Double,`0})">
+            <summary>
+            Constructor, defining initial interpolation grid and function to interpolate.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.Function2DInterpBase`1.Resample">
+            <summary>
+            Resample the interpolation grid, basically halfing the dx and dy 
+            in the grid by adding mid points between all current points. 
+            <para>
+            If the original grid was a 3x3 grid, the new grid after resampling is 
+            5x5, and then 9x9 and so on.
+            </para>
+            </summary>
+            <returns>An estimate of the error of the interpolation on the new grid. 
+            <para> For all new grid points in the resample process, the difference between the exact value at the grid point 
+            and an interpolation value from the "old" grid is calculated, and the largest difference is returned.
+            </para></returns>
+        </member>
+        <member name="M:DHI.Projections.Function2DInterpBase`1.Interpolate(System.Double,System.Double)">
+            <summary>
+            Interpolate a value at the specified 2D position
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.Function2DInterpBase`1.Distance(`0,`0)">
+            <summary>
+            Calculate distance between two values. Used in the <see cref="M:DHI.Projections.Function2DInterpBase`1.Resample"/> process
+            to calculate the differences between values.
+            </summary>
+        </member>
+        <member name="T:DHI.Projections.Function2DInterp">
+            <summary>
+            Class for interpolating double values from a function in 2D, i.e. a function on the form
+            <code>
+            z = f(x,y)
+            </code>
+            <para>
+            This class can be used when a function in 2D space is too expensive to evaluate.
+            Function values are precalculated on a predefined 2D grid, and when calling <see cref="M:DHI.Projections.Function2DInterp.Interpolate(System.Double,System.Double)"/>,
+            values are interpolated from the values on the 2D grid.
+            </para>
+            <para>
+            Use the <see cref="M:DHI.Projections.Function2DInterpBase`1.Resample"/> function to increase the resolution of the 2D grid and thereby increase
+            the accuracy if the interpolation.
+            </para>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.Function2DInterp.Interpolate(System.Double,System.Double)">
+            <inheritdoc />
+        </member>
+        <member name="M:DHI.Projections.Function2DInterp.Interpolate(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double)">
+            <inheritdoc />
+        </member>
+        <member name="M:DHI.Projections.Function2DInterp.Distance(System.Double,System.Double)">
+            <inheritdoc />
+        </member>
+        <member name="T:DHI.Projections.XyCoord">
+            <summary>
+            Coordinate class, used in <see cref="T:DHI.Projections.Function2DInterpXyCoord"/>
+            </summary>
+        </member>
+        <member name="T:DHI.Projections.Function2DInterpXyCoord">
+            <summary>
+            Class for interpolating coordinate values from a function in 2D, i.e. a function on the form
+            <code>
+            (X,Y) = f(x,y)
+            </code>
+            <para>
+            This class can be used when a function in 2D space is too expensive to evaluate.
+            Function values are precalculated on a predefined 2D grid, and when calling <see cref="M:DHI.Projections.Function2DInterpXyCoord.Interpolate(System.Double,System.Double)"/>,
+            values are interpolated from the values on the 2D grid.
+            </para>
+            <para>
+            Use the <see cref="M:DHI.Projections.Function2DInterpBase`1.Resample"/> function to increase the resolution of the 2D grid and thereby increase
+            the accuracy if the interpolation.
+            </para>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.Function2DInterpXyCoord.Interpolate(System.Double,System.Double)">
+            <inheritdoc />
+        </member>
+        <member name="M:DHI.Projections.Function2DInterpXyCoord.Interpolate(System.Double,System.Double,DHI.Projections.XyCoord,DHI.Projections.XyCoord,DHI.Projections.XyCoord,DHI.Projections.XyCoord)">
+            <inheritdoc />
+        </member>
+        <member name="M:DHI.Projections.Function2DInterpXyCoord.Distance(DHI.Projections.XyCoord,DHI.Projections.XyCoord)">
+            <inheritdoc />
+        </member>
+        <member name="T:DHI.Projections.GridInterpolator">
+            <summary>
+            Class for interpolating values from a grid. 
+            <para>
+            Interpolation is performed in two steps, first step is calculation of 
+            fractional indices and second step is interpolation based on fractional
+            indices.
+            </para>
+            <para>
+            Fractional indices are calculated by calling one of the *2Jk methods. 
+            Values are interpolated by calling the <see cref="M:DHI.Projections.GridInterpolator.Interpolate(System.Single[],System.Double,System.Double,System.Single)"/> method 
+            with the fractional indices.
+            </para>
+            <para>
+            Calculating fractional indices involves various map projection calculations
+            and can be computational expensive. The fractional indices are meant to be stored
+            in case they are to be reused.
+            </para>
+            <para>
+            By setting up reprojection, using one of the SetupReprojection methods, you
+            can specify a target projection different from the grid projection. 
+            Then interpolation point coordinates provided in the *2Jk methods
+            (as well Xy, Proj and Geo version) are assumed to be in that target 
+            map projection, and reprojection from the target projection to the grid 
+            projection will be performed before calculating fractional indices.
+            </para>
+            </summary>
+            <remarks>
+            The range of the fractional indices varies depending on wether the 
+            grid is element/cell based or node based. 
+            <list type="bullet">
+            <item>For a 3 x 2 element/cell based grid, 
+                  (j,k) is in the range [0;3] x [0;2].</item>
+            <item>For a 3 x 2 node based grid, 
+                  (j,k) is in the range [0;2] x [0;1].</item>
+            </list>
+            </remarks>
+        </member>
+        <member name="F:DHI.Projections.GridInterpolator._jksMin">
+            <summary> Smallest j/k index value, and still inside source grid </summary>
+        </member>
+        <member name="F:DHI.Projections.GridInterpolator._jsMax">
+            <summary> Largest j index value, and still inside source grid </summary>
+        </member>
+        <member name="F:DHI.Projections.GridInterpolator._ksMax">
+            <summary> Largest k index value, and still inside source grid </summary>
+        </member>
+        <member name="F:DHI.Projections.GridInterpolator._moveSourceHalfGridCell">
+            <summary>
+            If projection origin does not match lower left node
+            we need to move source coordinates to origin matching lower left node
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.GridInterpolator.DoInterpolate">
+            <summary>
+            Bool specifying whether to interpolate (true) or take the closest value (false, default)
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.GridInterpolator.Reprojector">
+            <summary>
+            Reprojector used when converting between map projections.
+            <para>
+            You can use this to set datum shift parameters. When no reprojection
+            is specified this will be null.
+            </para>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.GridInterpolator.#ctor(DHI.Projections.GridReprojector.GridInfo)">
+            <summary>
+            Create a new object
+            </summary>
+            <param name="sourceInfo">Information of source grid</param>
+        </member>
+        <member name="M:DHI.Projections.GridInterpolator.SetupReprojection(DHI.Projections.Cartography)">
+            <summary>
+            Enable reprojection, i.e. conversion from a target coordinate system
+            to the coordinate system of the grid. 
+            <para>
+            The returned Reprojector object can be used for specifying datum shift
+            parameters. The Reprojector is set up using the grid projection
+            as the source projection and the projection provided in this method as the 
+            target projection. It must always have the convertion type 
+            <see cref="F:DHI.Projections.Reprojector.ConversionType.Geo2Geo"/>
+            handling datum shifts only.
+            </para>
+            </summary>
+            <param name="targetCartography">Cartography object, using target projection</param>
+            <returns>Reprojector. Set datum shift parameters if necessary.</returns>
+        </member>
+        <member name="M:DHI.Projections.GridInterpolator.SetupReprojection(DHI.Projections.Reprojector,DHI.Projections.Cartography)">
+            <summary>
+            Enable reprojection, i.e. conversion from a target coordinate system
+            to the coordinate system of the grid. 
+            <para>
+            The Reprojector object is used for datum shift conversions only. 
+            The Reprojector must be set up using the grid projection
+            as the source projection and the projection provided in this method as the 
+            target projection. It must always have the convertion type 
+            <see cref="F:DHI.Projections.Reprojector.ConversionType.Geo2Geo"/>,
+            i.e. handling datum shifts only.
+            </para>
+            </summary>
+            <param name="reprojector">Reprojector object </param>
+            <param name="targetCartography">Cartography object, using target projection</param>
+        </member>
+        <member name="M:DHI.Projections.GridInterpolator.Xy2Jk(System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from local grid x-y coordinates 
+            to fractional indices in the source grid. The fractional
+            indices can be used directly in the <see cref="M:DHI.Projections.GridInterpolator.Interpolate(System.Single[],System.Double,System.Double,System.Single)"/>
+            method.
+            <para>
+            For a 3 x 2 element/cell based grid, 
+            (j,k) is in the range [0;3] x [0;2].
+            </para>
+            <para>
+            For a 3 x 2 node based grid, 
+            (j,k) is in the range [0;2] x [0;1].
+            </para>
+            </summary>
+            <param name="x">Local x coordinate</param>
+            <param name="y">Local y coordinate</param>
+            <param name="j">Fractional j index (x-axis)</param>
+            <param name="k">Fractional k index (y-axis)</param>
+            <returns>true if inside source grid, false if outside</returns>
+        </member>
+        <member name="M:DHI.Projections.GridInterpolator.Proj2Jk(System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from projection easting-northing coordinates 
+            to fractional indices in the source grid. The fractional
+            indices can be used directly in the <see cref="M:DHI.Projections.GridInterpolator.Interpolate(System.Single[],System.Double,System.Double,System.Single)"/>
+            method.
+            <para>
+            For a 3 x 2 element/cell based grid, 
+            (j,k) is in the range [0;3] x [0;2].
+            </para>
+            <para>
+            For a 3 x 2 node based grid, 
+            (j,k) is in the range [0;2] x [0;1].
+            </para>
+            </summary>
+            <param name="east">Projection easting/x coordinate</param>
+            <param name="north">Projection northing/y coordinate</param>
+            <param name="j">Fractional j index (x-axis)</param>
+            <param name="k">Fractional k index (y-axis)</param>
+            <returns>true if inside source grid, false if outside</returns>
+        </member>
+        <member name="M:DHI.Projections.GridInterpolator.Geo2Jk(System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from projection easting-northing coordinates 
+            to fractional indices in the source grid. The fractional
+            indices can be used directly in the <see cref="M:DHI.Projections.GridInterpolator.Interpolate(System.Single[],System.Double,System.Double,System.Single)"/>
+            method.
+            <para>
+            For a 3 x 2 element/cell based grid, 
+            (j,k) is in the range [0;3] x [0;2].
+            </para>
+            <para>
+            For a 3 x 2 node based grid, 
+            (j,k) is in the range [0;2] x [0;1].
+            </para>
+            </summary>
+            <param name="lon">Geographical longitude/x coordinate</param>
+            <param name="lat">Geographical latitude/y coordinate</param>
+            <param name="j">Fractional j index (x-axis)</param>
+            <param name="k">Fractional k index (y-axis)</param>
+            <returns>true if inside source grid, false if outside</returns>
+        </member>
+        <member name="M:DHI.Projections.GridInterpolator.IsInside(System.Double,System.Double)">
+            <summary>
+            Check if fractional index is inside grid.
+            </summary>
+            <returns>true if the fractional indices is inside grid</returns>
+        </member>
+        <member name="M:DHI.Projections.GridInterpolator.Interpolate(System.Single[],System.Double,System.Double,System.Single)">
+            <summary>
+            Interpolate in the <paramref name="source"/> array at relative/fractional index 
+            (<paramref name="jRel"/>,<paramref name="kRel"/>), using the <paramref name="undefinedValue"/>
+            as an undefined value/delete value that is not taken into account when interpolating.
+            </summary>
+            <param name="source">Source array, size must match source array definition.</param>
+            <param name="jRel">Relative/fractional index in x direction</param>
+            <param name="kRel">Relative/fractional index in y direction</param>
+            <param name="undefinedValue">Undefined value</param>
+            <returns>Interpolated value</returns>
+        </member>
+        <member name="T:DHI.Projections.InterpolatingConverter">
+            <summary>
+            Class for performing a conversion inside a user specified 
+            area. It utilizes bilinear interpolation on a grid of 
+            pre-converted values.
+            <para>
+            The assumption is that the original conversion is fairly expensive, 
+            and accuracy is not as important as performance.
+            </para>
+            <para>
+            The conversion is pre-calculated on a grid inside the 
+            user specified area. The original expensive conversion will only 
+            be performed initially to create the pre-calculated grid values. 
+            </para>
+            <para>
+            The accuracy of the bilinear interpolation depends on the 
+            grid spacing and the original conversion. 
+            The more non-linear the original conversion is, the smaller a grid spacing 
+            is required to get the same accuracy. 
+            Typical values of grid spacing dx to get app. 1 m accuracy:
+            <list type="bullet">
+            <item>Convert projection coordinates to another datum : dx ~ 100.000 m </item>
+            <item>Convert projection coordinates between two neighbouring UTM zones: dx ~ 10.000 m</item>
+            <item>Convert between geo and UTM projection coordinates at equator: dx ~ 20.000</item>
+            <item>Convert between geo and UTM projection coordinates at latitude ~ 55: dx ~ 5.000</item>
+            </list>
+            </para>
+            </summary>
+            <example>
+            The <see cref="T:DHI.Projections.InterpolatingConverter.Conversion"/> delegate must be set up. To use
+            a reprojector object as the original conversion, do:
+            <code>
+               // Setup converter to use reprojector
+               Reprojector reprojector = new Reprojector(sourceProjection, targetProjection);
+               GridBufferConverter.Conversion conversion
+                   = delegate(ref double x, ref double y)
+                       {
+                         reprojector.Convert(ref x, ref y);
+                       };
+               GridBufferConverter converter = new GridBufferConverter(conversion);
+               // Define the area to work on and the size of the pre-calculated grid
+               converter.SetupArea(x0, y0, x1, y1);
+               converter.SetupGridSize(xCount, yCount);
+               converter.Initialize();
+            
+               // Converter is now ready for use
+               converter.Convert(ref x, ref y);
+            </code>
+            </example>
+        </member>
+        <member name="T:DHI.Projections.InterpolatingConverter.Conversion">
+            <summary>
+            Delegate definition for original conversion method
+            </summary>
+            <param name="x">X value to convert</param>
+            <param name="y">Y value to convert</param>
+        </member>
+        <member name="M:DHI.Projections.InterpolatingConverter.#ctor(DHI.Projections.InterpolatingConverter.Conversion)">
+            <summary>
+            Create new object
+            </summary>
+            <param name="conversion">original conversion method</param>
+        </member>
+        <member name="M:DHI.Projections.InterpolatingConverter.SetupGrid(System.Double,System.Double,System.Double,System.Double,System.Int32,System.Int32)">
+            <summary>
+            Setup manually region and buffer grid size
+            </summary>
+            <param name="x0">Start offset of buffer grid in x direction</param>
+            <param name="y0">Start offset of buffer grid in y direction</param>
+            <param name="dx">Grid spacing of buffer grid in x direction</param>
+            <param name="dy">Grid spacing of buffer grid in y direction</param>
+            <param name="xCount">Number of grid points in buffer grid x direction</param>
+            <param name="yCount">Number of grid points in buffer grid y direction</param>
+        </member>
+        <member name="M:DHI.Projections.InterpolatingConverter.SetupArea(System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Setup the region that the buffer should cover. You must also call
+            <see cref="M:DHI.Projections.InterpolatingConverter.SetupGridSize(System.Int32,System.Int32)"/> or <see cref="M:DHI.Projections.InterpolatingConverter.SetupGridSpacing(System.Double,System.Double)"/>.
+            </summary>
+            <param name="x0">X coordinate of lower left corner of buffer area</param>
+            <param name="y0">Y coordinate of lower left corner of buffer area</param>
+            <param name="x1">X coordinate of uppper right corner of buffer area</param>
+            <param name="y1">Y coordinate of uppper right corner of buffer area</param>
+        </member>
+        <member name="M:DHI.Projections.InterpolatingConverter.SetupGridSpacing(System.Double,System.Double)">
+            <summary>
+            Set up the grid spacing of the pre-calculated grid
+            <para>
+            Call first <see cref="M:DHI.Projections.InterpolatingConverter.SetupArea(System.Double,System.Double,System.Double,System.Double)"/> before calling this
+            </para>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.InterpolatingConverter.SetupGridSize(System.Int32,System.Int32)">
+            <summary>
+            Set up the size of the pre-calculated grid. 
+            <para>
+            Call first <see cref="M:DHI.Projections.InterpolatingConverter.SetupArea(System.Double,System.Double,System.Double,System.Double)"/> before calling this
+            </para>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.InterpolatingConverter.CalculateErrorEstimate(System.Double,System.Double)">
+            <summary>
+            Calculate an estimate of the largest error
+            for the provided dx and dy. The error estimate
+            is calculated in the center of the domain, which 
+            may not be representative for the entire domain,
+            so the error estimate is usually lower than the
+            actual largest error.
+            </summary>
+            <param name="dx">Grid spacing of buffer grid in x direction</param>
+            <param name="dy">Grid spacing of buffer grid in y direction</param>
+            <returns>Estimate of error</returns>
+        </member>
+        <member name="M:DHI.Projections.InterpolatingConverter.CalculateGridSizeFromErrorEstimate(System.Double,System.Double,System.Double)">
+            <summary>
+            Calculate and return a grid size estimate based on a max error. 
+            This only returns an indication, the actual error will usually 
+            be larger than the max error, for the returned grid size.
+            <para>
+            Grid size cannot be larger than extent of area in x and y direction.
+            </para>
+            </summary>
+            <param name="maxError">Maximum error to set grid size for</param>
+            <param name="minGridsize">Smallest grid size allowed</param>
+            <param name="maxGridsize">Largest grid size allowed</param>
+            <returns>Grid size</returns>
+        </member>
+        <member name="M:DHI.Projections.InterpolatingConverter.Initialize">
+            <summary>
+            Initialize buffer grid
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.InterpolatingConverter.Convert(System.Double@,System.Double@)">
+            <summary>
+            Convert the (x,y) coordinate
+            </summary>
+            <param name="x">X coordinate</param>
+            <param name="y">Y coordinate</param>
+        </member>
+        <member name="T:DHI.Projections.GridReprojector">
+            <summary>
+            Class for reprojecting a source grid in one coordinate system to
+            a target grid in another coordinate system. 
+            <para>
+            Both source and target grids are regular in each their coordinate system. 
+            However, the source grid may not be a regular grid in the target coordinate 
+            system, so re-gridding and interpolation is necessary.
+            </para>
+            <para>
+            This class is intended for reuse, i.e. reprojection weights are stored and 
+            if executing the <see cref="M:DHI.Projections.GridReprojector.Convert(System.Single[],System.Single[],System.Single,System.Single)"/> method more than once, the stored 
+            reprojection values are reused. This is for performance reasons, since the
+            actual reprojection can be an expensive operation.
+            </para>
+            </summary>
+        </member>
+        <member name="T:DHI.Projections.GridReprojector.GridInfo">
+            The reprojection is performed based on the list of PointInfo's,
+            where each (j,k) index in the target grid specifies
+            a fractional (js,ks) index as floating point number, that can
+            be used for interpolation in the source grid.
+            
+            When creating the PointInfo's, the source indices
+            are fractional. Fractions between 0-1 covers the 
+            first grid cell, where 0 is lower left corner and 0.5 is 
+            center of cell. When interpolating/finding nearest value
+            it is important to take into account whether the source
+            grid is element center based.
+            <summary>
+            Grid info - defining origin, size and projection of grid
+            </summary>
+        </member>
+        <member name="F:DHI.Projections.GridReprojector.GridInfo.ProjectionString">
+            <summary>
+            A string in the WKT format for a spatial reference system, or one of the abbreviations
+            </summary>
+        </member>
+        <member name="F:DHI.Projections.GridReprojector.GridInfo.LonOrigin">
+            <summary>
+            Origin longitude coordinate of local grid coordinates.
+            </summary>
+        </member>
+        <member name="F:DHI.Projections.GridReprojector.GridInfo.LatOrigin">
+            <summary>
+            Origin latitude coordinate of local grid coordinates.
+            </summary>
+        </member>
+        <member name="F:DHI.Projections.GridReprojector.GridInfo.Orientation">
+            <summary>
+            Orientation of local grid coordinates.
+            The rotation from true north to the model coordinate 
+            y-axis in degrees, measured positive clockwise.
+            </summary>
+        </member>
+        <member name="F:DHI.Projections.GridReprojector.GridInfo.X0">
+            <summary>
+            Relative offset to origin in the x direction
+            </summary>
+        </member>
+        <member name="F:DHI.Projections.GridReprojector.GridInfo.Dx">
+            <summary>
+            Space between each gridpoint in the x direction
+            </summary>
+        </member>
+        <member name="F:DHI.Projections.GridReprojector.GridInfo.Y0">
+            <summary>
+            Relative offset to origin in the y direction
+            </summary>
+        </member>
+        <member name="F:DHI.Projections.GridReprojector.GridInfo.Dy">
+            <summary>
+            Space between each gridpoint in the y direction
+            </summary>
+        </member>
+        <member name="F:DHI.Projections.GridReprojector.GridInfo.XCount">
+            <summary>
+            Number of data points in the x direction
+            </summary>
+        </member>
+        <member name="F:DHI.Projections.GridReprojector.GridInfo.YCount">
+            <summary>
+            Number of data points in the y direction
+            </summary>
+        </member>
+        <member name="F:DHI.Projections.GridReprojector.GridInfo.ElementCenterValues">
+            <summary>
+            Bool indicating whether the grid is node based (false) or element/cell based (true)
+            <para>
+            Default is true;
+            </para>
+            <para>
+            Node based grid means that values are defined in grid line intersection point
+            </para>
+            <para>
+            Element center based grid means that values are defined in the center of the rectangle 
+            bounded by 4 grid lines.
+            </para>
+            </summary>
+        </member>
+        <member name="F:DHI.Projections.GridReprojector.GridInfo.OriginInFirstElementCenter">
+            <summary>
+            Flag indicating if the projection origin is in the
+            center of the first grid cell (true) or in the
+            lower left corner of the first grid cell (false).
+            <para>
+            Only applicable when <see cref="F:DHI.Projections.GridReprojector.GridInfo.ElementCenterValues"/> is true.
+            </para>
+            <para>
+            Default is true.
+            </para>
+            </summary>
+        </member>
+        <member name="F:DHI.Projections.GridReprojector._targetOrientationProj">
+            <summary> Orientation of target grid towards projection north (not true north) </summary>
+        </member>
+        <member name="P:DHI.Projections.GridReprojector.DoInterpolate">
+            <summary>
+            Bool specifying whether to interpolate (true) or take the closest value (false, default)
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.GridReprojector.TargetGridInfo">
+            <summary>
+            Information on target grid. Null if not set (before calling one of the SetTarget method).
+            <para>
+            If not specified fully the target grid-info, this is first populated fully 
+            after <see cref="M:DHI.Projections.GridReprojector.Initialize"/>.
+            </para>
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.GridReprojector.Reprojector">
+            <summary>
+            Reprojector used when converting between map projections.
+            <para>
+            You can use this to set datum shift parameters. 
+            </para>
+            <para>
+            Any updates to the reprojector must be done
+            after the target has been set and before calling
+            <see cref="M:DHI.Projections.GridReprojector.Initialize"/>.
+            </para>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.GridReprojector.#ctor(DHI.Projections.GridReprojector.GridInfo)">
+            <summary>
+            Create a new object
+            </summary>
+            <param name="sourceInfo">Information of source grid</param>
+        </member>
+        <member name="M:DHI.Projections.GridReprojector.#ctor(DHI.Projections.GridReprojector.GridInfo,System.Boolean)">
+            <summary>
+            Create a new object
+            </summary>
+            <param name="sourceInfo">Information of source grid</param>
+            <param name="validateProjectionStrings">Bool specifying if projectionstrings should be validated or not. 
+            It is fairly expensive to validate the projection strings, and the validation can be skipped by setting this flag to false. 
+            Then the user must beforehand check that the projection is valid by calling <see cref="M:DHI.Projections.MapProjection.IsValid(System.String)"/>. </param>
+        </member>
+        <member name="M:DHI.Projections.GridReprojector.SetTarget(System.String,System.Double)">
+            <summary>
+            Define target projection string, and orientation (towards projection north).
+            <para>
+            All other properties of the target GridInfo is calculated  (during <see cref="M:DHI.Projections.GridReprojector.Initialize"/>) 
+            from the bounding box of source grid in the target local grid coordinate system,
+            such that the target contains the entire area defined by the source GridInfo.
+            </para>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.GridReprojector.SetTarget(System.String,System.Double,System.Int32,System.Int32)">
+            <summary>
+            Define target projection string, orientation (towards projection north), and number of grid points
+            in the x and y direction in the target.
+            <para>
+            All other properties of the target GridInfo is calculated (during <see cref="M:DHI.Projections.GridReprojector.Initialize"/>) 
+            from the bounding box of source grid in the target local grid coordinate system
+            such that the target contains the entire area defined by the source GridInfo.
+            </para>
+            <para>
+            Compared to <see cref="M:DHI.Projections.GridReprojector.SetTarget(System.String,System.Double)"/>, this version will change the resolution
+            of the target grid in the x and y direction. 
+            </para>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.GridReprojector.SetTarget(DHI.Projections.GridReprojector.GridInfo)">
+            <summary>
+            Fully specify the target gridinfo
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.GridReprojector.TargetInitialize">
+            <summary>
+            Sets up Reprojector class
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.GridReprojector.Initialize">
+            <summary>
+            Initialize; calculate target grid info (if necessary), 
+            set up internal structures for fast processing of reprojections and interpolations.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.GridReprojector.Initialize(System.Boolean)">
+            <summary>
+            Initialize; calculate target grid info (if necessary), 
+            set up internal structures for fast processing of reprojections and interpolations.
+            <para>
+            If only one conversion is required, set the <paramref name="oneTimeConvert"/> to true, 
+            to skip setting up of internal structures.
+            Currently only applicable if using the <see cref="M:DHI.Projections.GridReprojector.ConvertBitmapData(System.Byte[],System.Byte[])"/> method.
+            </para>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.GridReprojector.InitPointInfos">
+            <summary>
+            Precalculate <see cref="T:DHI.Projections.GridReprojector.PointInfo"/> for all
+            points in target grid that is inside the source
+            grid. This is for performance reasons, since the
+            projection methods are pretty expensive. 
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.GridReprojector.Convert(System.Single[],System.Single[],System.Single,System.Single)">
+            <summary>
+            Convert source data to target data
+            </summary>
+            <param name="source">Source data array</param>
+            <param name="target">Target data array</param>
+            <param name="undefinedValue">Undefined/delete value in source/target grid</param>
+            <param name="outsideValue">Value specified for points outside the source grid</param>
+        </member>
+        <member name="M:DHI.Projections.GridReprojector.ConvertBitmapData(System.Byte[],System.Byte[])">
+            <summary>
+            NOTE: Experimental!
+            <para>
+            Convert source data to target data, assuming source and target are
+            32 bit bitmap data.
+            </para>
+            <para>
+            When defining source and target grid, remember they must include the
+            proper "scan width" (single row of pixels), which may be larger than
+            the width of the bitmap image.
+            </para>
+            <para>
+            Currently only supports top-down bitmaps.
+            </para>
+            </summary>
+            <param name="source">Source data array</param>
+            <param name="target">Target data array</param>
+        </member>
+        <member name="M:DHI.Projections.GridReprojector.SetupReprojInterpolator">
+            <summary>
+            TODO: Not enabled currently: Setting up a interpolator, to 
+            avoid excessive use of the reproj, which is not very fast.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.GridReprojector.CalculateTargetEnvelope(DHI.Projections.Cartography,DHI.Projections.Cartography)">
+            <summary>
+            Loop around the boundary of the source grid and grow the target envelope
+            </summary>
+        </member>
+        <member name="T:DHI.Projections.GridReprojector.PointInfo">
+            <summary>
+            Struct specifying for each target (j,k) grid index
+            the (j,k) index in the source grid. Since the target
+            (j,k) cannot exactly hit an integer source (j,k),
+            the source (j,k) are floating point number.
+            <para>
+            For element center grids the JSource and KSource indices
+            can be 1 grid cell outside bounds (0 to count)
+            </para>
+            </summary>
+        </member>
+        <member name="F:DHI.Projections.GridReprojector.PointInfo.JTarget">
+            <summary> J-index in target grid </summary>
+        </member>
+        <member name="F:DHI.Projections.GridReprojector.PointInfo.KTarget">
+            <summary> K-index in target grid </summary>
+        </member>
+        <member name="F:DHI.Projections.GridReprojector.PointInfo.JSource">
+            <summary> J-index in source grid, fractional index, origin in left-most grid line</summary>
+        </member>
+        <member name="F:DHI.Projections.GridReprojector.PointInfo.KSource">
+            <summary> K-index in source grid, fractional index, origin in bottom-most grid line</summary>
+        </member>
+        <member name="T:DHI.Projections.MapProjection">
+             <summary>
+             A map projection handles conversion from geographical coordinates (lon, lat)
+             to projection coordintes (east, north) and to Euclidean 3D datum coordinates 
+             with origin in the center of the earch (center of the ellipsoid).
+             <para>
+             The <see cref="P:DHI.Projections.MapProjection.ProjectionString"/> is a WKT string for a spatial 
+             reference system. A number of abbreviated strings also exists, 
+             i.e., "UTM-33" for a WGS-84 UTM zone 33 projection.
+             </para>
+             </summary>
+             <example>
+             <code>
+               // WKT projection string
+               string projStr = @"PROJCS[""NZGD_2000_New_Zealand_Transverse_Mercator"",GEOGCS[""GCS_NZGD_2000"",DATUM[""D_NZGD_2000"",SPHEROID[""GRS_1980"",6378137.0,298.257222101]],PRIMEM[""Greenwich"",0.0],UNIT[""Degree"",0.0174532925199433]],PROJECTION[""Transverse_Mercator""],PARAMETER[""False_Easting"",1600000.0],PARAMETER[""False_Northing"",10000000.0],PARAMETER[""Central_Meridian"",173.0],PARAMETER[""Scale_Factor"",0.9996],PARAMETER[""Latitude_Of_Origin"",0.0],UNIT[""Meter"",1.0]]";
+               MapProjection mapProj = new MapProjection(projStr);
+            
+               // Convert from projection to geographical coordinates.
+               double lon, lat;
+               mapProj.Proj2Geo(1752001, 5947201, out lon, out lat);
+             </code>
+             </example>
+             
+        </member>
+        <member name="F:DHI.Projections.MapProjection._objectHolder">
+            <summary>
+            Reference to object that actually holds the unmanaged
+            data, and that will free unmanaged ressources.
+            The reference is kept here to avoid garbage collection
+            of the holding object and thereby the release of 
+            the MzMapProjection object that this object relies on.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.#ctor(System.String,System.Boolean)">
+            <summary>
+            Create and initialize a mapprojection with the specifed projection string.
+            </summary>
+            <param name="projectionString">A string in the WKT format for a spatial reference system, or one of the abbreviations</param>
+            <param name="validateProjectionString">Bool specifying if projectionstrings should be validated or not. 
+            It is fairly expensive to validate the projection strings, and the validation can be skipped by setting this flag to false. 
+            Then the user must beforehand check that the projection is valid by calling <see cref="M:DHI.Projections.MapProjection.IsValid(System.String)"/>. </param>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.#ctor(System.IntPtr,System.Object)">
+            <summary>
+            Creates a map-projection from a pointer to a map-projection object that
+            is part of parent object (e.g. MzCartography), and that will
+            be released together with the parent object, i.e. the map-projection object
+            cannot be released standalone.
+            </summary>
+            <param name="mzMapProjPointer">Pointer to map projection object</param>
+            <param name="mapProjObjectHolder">Pointer to .NET object that represents the parent unmanaged object</param>
+            <remarks>
+            The mapProjObjectHolder reference is required to assure that the parent .NET object can go 
+            out of scope, but only when the map projection also goes out of scope the parent object
+            is garbage collected (and only then parent unmanged ressources are released).
+            </remarks>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.Finalize">
+            <summary>
+            Free unmanaged ressources
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.MapProjection.Name">
+            <summary>
+            The short name of a projection. 
+            <para>
+            The short name is not unique amongst all WKT projections
+            </para>
+            <para>
+            If the <see cref="P:DHI.Projections.MapProjection.ProjectionString"/> is not a WKT projection string, 
+            the <see cref="P:DHI.Projections.MapProjection.ProjectionString"/> itself is returned as the short name.
+            </para>
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.MapProjection.ProjectionString">
+            <summary>
+            Returns the WKT projection string, or one of the projection abbreviation strings.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.Geo2Proj(System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from geographical coordinates to projection coordinates
+            </summary>
+            <param name="lon">Longitude</param>
+            <param name="lat">Latitude</param>
+            <param name="east">Easting</param>
+            <param name="north">Northing</param>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.Proj2Geo(System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from projection coordinates to geographical coordinates 
+            </summary>
+            <param name="east">Easting</param>
+            <param name="north">Northing</param>
+            <param name="lon">Longitude</param>
+            <param name="lat">Latitude</param>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.GetOrigin(System.Double@,System.Double@)">
+            <summary>
+            Get the geographical origin of the map projection
+            </summary>
+            <param name="lon">Longitude</param>
+            <param name="lat">Latitude</param>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.GetConvergence(System.Double,System.Double)">
+            <summary>
+            Get the convergence (orientation towards true north) at the given geographical location.
+            <para>
+            The convergence is the angle measured clockwise from true north to the north-south
+            gridline passing through the specified coordinate.
+            </para>
+            </summary>
+            <param name="lon">Longitude</param>
+            <param name="lat">Latitude</param>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.GetDefaultArea(System.Double@,System.Double@,System.Double@,System.Double@)">
+            <summary>
+            Function that returns the default area in map projection coordinates of the projection.
+            <para>
+            The default area is the area where the projection is ment to be used and where
+            it is accurate. It is not recommended to use the map projection outside its
+            default area.
+            </para>
+            </summary>
+            <param name="x0">the x-coordinate of the lower lefthand corner</param>
+            <param name="y0">the y-coordinate of the lower lefthand corner</param>
+            <param name="x1">the x-coordinate of the upper righthand corner</param>
+            <param name="y1">the y-coordinate of the upper righthand corner</param>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.Geo2Xyz(System.Double,System.Double,System.Double,System.Double@,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from geographical coordinates and height to 3D Euclidean coordinates.
+            <para>
+            The 3D coordinate system origin is at the earth center (ellipsoid center)
+            </para>
+            </summary>
+            <param name="lon">Longitude</param>
+            <param name="lat">Latitude</param>
+            <param name="height">Height over ellipsoid</param>
+            <param name="x">Eucledian x coordinate</param>
+            <param name="y">Eucledian y coordinate</param>
+            <param name="z">Eucledian z coordinate</param>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.Xyz2Geo(System.Double,System.Double,System.Double,System.Double@,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from Euclidean 3D coordinates to geographical coordinates and height.
+            <para>
+            The 3D coordinate system origin is at the earth center (ellipsoid center)
+            </para>
+            </summary>
+            <param name="x">Eucledian x coordinate</param>
+            <param name="y">Eucledian y coordinate</param>
+            <param name="z">Eucledian z coordinate</param>
+            <param name="lon">Longitude</param>
+            <param name="lat">Latitude</param>
+            <param name="height">Height over ellipsoid</param>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.Proj2GeoRotation(System.Double,System.Double,System.Double)">
+            <summary>
+            Convert a rotation from map projection north
+            into a rotation from true north. 
+            <para>
+            It adds the convergence value to the projection north rotation value
+            </para>
+            <para>
+            The convertion depends on the geographical location.
+            </para>
+            </summary>
+            <param name="east">Easting coordinate</param>
+            <param name="north">Northing coordinate</param>
+            <param name="rotation">Rotation clock-wise from map projection north</param>
+            <returns>Rotation clock-wise from true north</returns>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.Geo2ProjRotation(System.Double,System.Double,System.Double)">
+            <summary>
+            Convert a rotation from true north
+            into a rotation from map projection north
+            <para>
+            It subtracts the convergence value from the true north rotation value
+            </para>
+            <para>
+            The convertion depends on the geographical location.
+            </para>
+            </summary>
+            <param name="lon">Easting coordinate</param>
+            <param name="lat">Northing coordinate</param>
+            <param name="rotation">Rotation clock-wise from true north</param>
+            <returns>Rotation clock-wise from map projection north</returns>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.IsValid(System.String)">
+            <summary>
+            Returns true if the <paramref name="projectionString"/> is a valid projection string
+            </summary>
+            <param name="projectionString">Name of map projection, WKT string or a projection abbreviation</param>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.HasDatum(System.String)">
+            <summary>
+            Returns true if the <paramref name="projectionString"/> projection has a datum definition.
+            <para>
+            If a projection does not have an underlying datum, reprojections including datum
+            shifts cannot be performed.
+            </para>
+            </summary>
+            <param name="projectionString">Name of map projection, WKT string or a projection abbreviation</param>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.IsLocal(System.String)">
+            <summary>
+            Returns true if the <paramref name="projectionString"/> defines a local 
+            coordinate system that is not georeferenced.
+            <para>
+            The projection string for a local coordinate system is the string: "NON-UTM"
+            </para>
+            </summary>
+            <param name="projectionString">Name of map projection, WKT string or a projection abbreviation</param>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.IsLongLat(System.String)">
+            <summary>
+            Returns true if the <paramref name="projectionString"/> projection is "LONG/LAT"
+            <para>
+            "LONG/LAT" is a geographical coordinate system without an underlying datum (ellipsoid) 
+            definition.
+            </para>
+            </summary>
+            <param name="projectionString">Name of map projection, WKT string or a projection abbreviation</param>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.IsGeoreferenced(System.String)">
+            <summary>
+            Returns true if the <paramref name="projectionString"/> projection is georeferenced,
+            meaning that it is based on, or can convert to, geographical coordinates (longitude, latitude).
+            </summary>
+            <param name="projectionString">Name of map projection, WKT string or a projection abbreviation</param>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.IsGeographical(System.String)">
+            <summary>
+            Returns true if the <paramref name="projectionString"/> projection is a geographical projection, i.e. based
+            on spherical (lon, lat) coordinates
+            </summary>
+            <param name="projectionString">Name of map projection, WKT string or a projection abbreviation</param>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.Longitude2UtmZone(System.Double)">
+            <summary>
+            Get the projection string for the UTM zone best matching the longitude coordinate
+            </summary>
+            <param name="lon">Name of map projection, WKT string</param>
+            <returns>UTM zone WKT string</returns>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.ProjectionShortName(System.String)">
+            <summary>
+            Get the short name out of a WKT projetion string. 
+            <para>
+            The short name is not unique amongst all WKT projections
+            </para>
+            <para>
+            If the <paramref name="projString"/> is not a WKT projection string, 
+            the <paramref name="projString"/> itself is returned as the short name.
+            </para>
+            </summary>
+            <param name="projString">A WKT projection string</param>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.ProjectionOrigin(System.String,System.Double@,System.Double@)">
+            <summary>
+            Returns the geographical origin of the projection defined by the
+            <paramref name="projstring"/>
+            <para>
+            If the projection string is not a valid WKT string, an exception is thrown.
+            </para>
+            </summary>
+            <param name="projstring">A string the the WKT format for a spatial reference system</param>
+            <param name="lon">Longitude coordinate of the projection origin</param>
+            <param name="lat">Latitude coordinate of the projection origin</param>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.ProjectionOrigin(System.String,System.Double@,System.Double@,System.Boolean)">
+            <summary>
+            Returns the geographical origin of the projection defined by the
+            <paramref name="projstring"/>
+            <para>
+            If the projection string is not a valid WKT string, an exception is thrown.
+            </para>
+            </summary>
+            <param name="projstring">A string the the WKT format for a spatial reference system</param>
+            <param name="lon">Longitude coordinate of the projection origin</param>
+            <param name="lat">Latitude coordinate of the projection origin</param>
+            <param name="validateProjectionString">Bool specifying if projectionstrings should be validated or not. 
+            It is fairly expensive to validate the projection strings, and the validation can be skipped by setting this flag to false. 
+            Then the user must beforehand check that the projection is valid by calling <see cref="M:DHI.Projections.MapProjection.IsValid(System.String)"/>. </param>
+        </member>
+        <member name="P:DHI.Projections.MapProjection.GoogleMapProjectionString">
+            <summary>
+            Returns the Google Map projection string
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MapProjection.AreIdentical(System.String,System.String)">
+            <summary>
+            Function that checks if two projecions are identical. 
+            <para>
+            Two map projections are identical, if they have the same set of parameters. 
+            if just one of the parameters are different, then the map projections are NOT identical.
+            </para>
+            </summary>
+            <example>
+            As an example, "UTM-32" is identical to  "WGS_1984_UTM_Zone_32N", because they 
+            have the same set of parameters and the ellipsoids are equivalent, but the projections don't have the same name. 
+            Another example of identical map projections is "NAD_1983_StatePlane_Alaska_1_FIPS_5001" and 
+            "NAD_1983_StatePlane_Alaska_1_FIPS_5001_Feet". Some parameters are defined in different units,
+            but they are converted to a common unit, before they are compared. 
+            </example>
+            <param name="projstring1">Specifies the full WKT map projection string to the first projection</param>
+            <param name="projstring2">Specifies the full WKT map projection string to the second projection</param>
+            <returns></returns>
+        </member>
+        <member name="T:DHI.Projections.MzCartDLLWrapper">
+            <summary>
+            Abstract (static) class providing one-to-one access to the methods in 
+            MzCart.dll, using C# calling conventions and marshalling. 
+            </summary>
+            <remarks>
+            The class changes the following behavior compared to the MzCart.dll:
+            - Methods with an error return code throws an exception on error
+            - Methods with just one return argument now returns the value
+            - Unmanaged arrays (strings) are Marshalled
+            </remarks>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.CartSetupLinux(System.String,System.String)">
+            <summary>
+            Load the MzCartography data
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzCartCreate(System.String,System.Double,System.Double,System.Double)">
+            <summary>
+            Create a new cartography class and return the pointer to it.
+            <para>
+            Remember to call <see cref="M:DHI.Projections.MzCartDLLWrapper.MzCartDestroy(System.IntPtr@)"/> on it in order to free
+            ressources that it has allocated.
+            </para>
+            </summary>
+            <param name="projstring">A string the the WKT format for a spatial reference system</param>
+            <param name="lon">Longitude coordinate of the local grid origin</param>
+            <param name="lat">Latitude coordinate of the local grid origin</param>
+            <param name="ori">Orientation of the cartography class grid, rotation clockwise from geographical north</param>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzCartDestroy(System.IntPtr@)">
+            <summary>
+            Destroy the cartography object pointer to by the <paramref name="mzCartPointer"/>.
+            <para>
+            After this methods has been called, the <paramref name="mzCartPointer"/> will
+            be set to <see cref="F:System.IntPtr.Zero"/>.
+            </para>
+            <para>
+            The pointer must have been created by using the <see cref="M:DHI.Projections.MzCartDLLWrapper.MzCartCreate(System.String,System.Double,System.Double,System.Double)"/> method.
+            </para>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzCartGetMapProjection(System.IntPtr)">
+            <summary>
+            <para>
+            USE WITH CARE!
+            </para>
+            <para>
+            Returns a pointer to the MzMapProjection that the cartography
+            object uses.
+            </para>
+            <para>
+            Note that the map projection object is deleted when the cartography object is.
+            Hence, you should not call destroy on this pointer, and you should not
+            use this pointer after destroy have been called on the cartography pointer.
+            </para>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzCartProjectionName(System.IntPtr)">
+            <summary>
+            Returns the name of the projection of the cartography object 
+            pointed to by the <paramref name="mzCartPointer"/>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzCartProjectionString(System.IntPtr)">
+            <summary>
+            Returns the WKT projection string, or one of the projection abbreviation strings 
+            of the cartography object pointed to by the <paramref name="mzCartPointer"/>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.GoogleMapProjectionString">
+            <summary>
+            Returns the google map projection string
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzCartProjectionNorth(System.IntPtr)">
+            <summary>
+            Return the angle between true north and a line parallel to the 
+            local grid.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzCartTrueNorth(System.IntPtr,System.Double,System.Double)">
+            <summary>
+            Returns the angle between true north and a line parallel to the 
+            local grid passing through (x,y).
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzCartGeo2Proj(System.IntPtr,System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from geographical coordinates to projection coordinates
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzCartProj2Geo(System.IntPtr,System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from projection coordinates to geographical coordinates 
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzCartGeo2Xy(System.IntPtr,System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from geographical coordinates to local grid x-y coordinates
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzCartXy2Geo(System.IntPtr,System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from local grid x-y coordinates to geographical coordinates 
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzCartProj2Xy(System.IntPtr,System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from projetion coordinates to local grid x-y coordinates
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzCartXy2Proj(System.IntPtr,System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from local grid x-y coordinates to projection coordinates 
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzMapProjCreate(System.String)">
+            <summary>
+            Create a new cartography class and return the pointer to it.
+            <para>
+            Remember to call <see cref="M:DHI.Projections.MzCartDLLWrapper.MzCartDestroy(System.IntPtr@)"/> on it in order to free
+            ressources that it has allocated.
+            </para>
+            </summary>
+            <param name="projstring">A string the the WKT format for a spatial reference system</param>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzMapProjDestroy(System.IntPtr@)">
+            <summary>
+            Destroy the cartography object pointer to by the <paramref name="mzConverterPointer"/>.
+            <para>
+            After this methods has been called, the <paramref name="mzConverterPointer"/> will
+            be set to <see cref="F:System.IntPtr.Zero"/>.
+            </para>
+            <para>
+            The pointer must have been created by using the <see cref="M:DHI.Projections.MzCartDLLWrapper.MzCartCreate(System.String,System.Double,System.Double,System.Double)"/> method.
+            </para>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzMapProjName(System.IntPtr)">
+            <summary>
+            Returns the name of the projection of the cartography object 
+            pointed to by the <paramref name="mzMapProjPointer"/>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzMapProjProjectionString(System.IntPtr)">
+            <summary>
+            Returns the WKT projection string, or one of the projection abbreviation strings 
+            of the cartography object pointed to by the <paramref name="mzMapProjPointer"/>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzMapProjGeo2Proj(System.IntPtr,System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from geographical coordinates to projection coordinates
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzMapProjProj2Geo(System.IntPtr,System.Double,System.Double,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from projection coordinates to geographical coordinates 
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzMapProjGetOrigin(System.IntPtr,System.Double@,System.Double@)">
+            <summary>
+            Gets the geographical origin of the map projection
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzMapProjGetConvergence(System.IntPtr,System.Double,System.Double)">
+            <summary>
+            Gets the convergence (angle towards true north) at the given geographical location
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.GetDefaultArea(System.IntPtr,System.Double@,System.Double@,System.Double@,System.Double@)">
+            <summary>
+            Function that returns the default area in map projection coordinates of the projection.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzMapProjGeo2Xyz(System.IntPtr,System.Double,System.Double,System.Double,System.Double@,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from geographical coordinates to 3D coordinates
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzMapProjXyz2Geo(System.IntPtr,System.Double,System.Double,System.Double,System.Double@,System.Double@,System.Double@)">
+            <summary>
+            Convert coordinates from 3D coordinates to geographical coordinates 
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzConverterCreate(System.String,System.String)">
+            <summary>
+            Create a new datum converter class and return the pointer to it.
+            <para>
+            Remember to call <see cref="M:DHI.Projections.MzCartDLLWrapper.MzConverterDestroy(System.IntPtr@)"/> on it in order to free
+            ressources that it has allocated.
+            </para>
+            </summary>
+            <param name="projstringSource">A projection string in the WKT format for the source map projection</param>
+            <param name="projstringTarget">A projection string in the WKT format for the target map projection </param>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzConverterDestroy(System.IntPtr@)">
+            <summary>
+            Destroy the converter object pointer to by the <paramref name="mzConverterPointer"/>.
+            <para>
+            After this methods has been called, the <paramref name="mzConverterPointer"/> will
+            be set to <see cref="F:System.IntPtr.Zero"/>.
+            </para>
+            <para>
+            The pointer must have been created by using the <see cref="M:DHI.Projections.MzCartDLLWrapper.MzCartCreate(System.String,System.Double,System.Double,System.Double)"/> method.
+            </para>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzConverterConvertXY(System.IntPtr,System.Double@,System.Double@)">
+            <summary>
+            Converts a point (x, y) from the source map projection to the target map projection
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzConverterInvConvertXY(System.IntPtr,System.Double@,System.Double@)">
+            <summary>
+            Converts a point (x, y) from the target map projection to the source map projection.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzConverterConvertXYH(System.IntPtr,System.Double@,System.Double@,System.Double@)">
+            <summary>
+            Converts a point (x, y, h) from the source map projection to the target map projection
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzConverterInvConvertXYH(System.IntPtr,System.Double@,System.Double@,System.Double@)">
+            <summary>
+            Converts a point (x, y, h) from the target map projection to the source map projection.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzConverterDatumShift(System.IntPtr,System.Double@,System.Double@,System.Double@)">
+            <summary>
+            Converts a point in Euclidean coordinates (x, y, z) relative to the source datum center to 
+            Euclidean coordinates relative to the target datum center
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzConverterInvDatumShift(System.IntPtr,System.Double@,System.Double@,System.Double@)">
+            <summary>
+            Converts a point in Euclidean coordinates (x, y, z) relative to the target datum center to 
+            Euclidean coordinates relative to the source datum center
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzConverterSetConversionType(System.IntPtr,DHI.Projections.Reprojector.ConversionType)">
+            <summary>
+            Sets the type of conversion
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzConverterGetBypassXYZ(System.IntPtr)">
+            <summary>
+            Returns the current value of the bypass flag.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzConverterBypassXYZ(System.IntPtr)">
+            <summary>
+            Configure the datum converter object to exclude conversion to and from Euclidean space.
+            This allows unnecessary datum transformations to be skipped.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzConverterResetBypassXYZ(System.IntPtr)">
+            <summary>
+            Configures the datum converter object to reset the bypass flag to its default value
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzConverterSetDatumShift(System.IntPtr,DHI.Projections.Reprojector.DatumShiftType,System.Double[],System.Boolean)">
+            <summary>
+            Functions that sets the datum shift parameters of either the source or the target map projection.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.C_MZDC_SETDATUMSHIFT(System.IntPtr,DHI.Projections.Reprojector.DatumShiftType,System.Double[],System.Int32)">
+            <summary>
+            Functions that sets the datum shift parameters of either the source or the target map projection.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.MzConverterInvertOrder(System.IntPtr)">
+            <summary>
+            Functions that swaps the source and the target map projection including the datum shift parameters.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.IsValid(System.String)">
+            <summary>
+            Returns true if the <paramref name="projectionString"/> is a valid projection string
+            </summary>
+            <param name="projectionString">Name of map projection, WKT string or a projection abbreviation</param>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.HasDatum(System.String)">
+            <summary>
+            Returns true if the <paramref name="projectionString"/> projection has a datum definition.
+            <para>
+            If a projection does not have an underlying datum, reprojections including datum
+            shifts cannot be performed.
+            </para>
+            </summary>
+            <param name="projectionString">Name of map projection, WKT string or a projection abbreviation</param>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.IsLocal(System.String)">
+            <summary>
+            Returns true if the <paramref name="projectionString"/> defines a local 
+            coordinate system that is not georeferenced.
+            <para>
+            The projection string for a local coordinate system is the string: "NON-UTM"
+            </para>
+            </summary>
+            <param name="projectionString">Name of map projection, WKT string or a projection abbreviation</param>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.IsLongLat(System.String)">
+            <summary>
+            Returns true if the <paramref name="projectionString"/> projection is "LONG/LAT"
+            </summary>
+            <param name="projectionString">Name of map projection, WKT string or a projection abbreviation</param>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.IsGeoreferenced(System.String)">
+            <summary>
+            Returns true if the <paramref name="projectionString"/> projection is georeferenced,
+            meaning that it is based on, or can convert to, geographical coordinates (longitude, latitude).
+            </summary>
+            <param name="projectionString">Name of map projection, WKT string or a projection abbreviation</param>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.IsGeographical(System.String)">
+            <summary>
+            Returns true if the <paramref name="projectionString"/> projection is a geographical projection, i.e. based
+            on spherical (lon, lat) coordinates
+            </summary>
+            <param name="projectionString">Name of map projection, WKT string or a projection abbreviation</param>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.S_LONGITUDETOUTMZONE(System.Double,System.Text.StringBuilder,System.Int32,System.Int32@)">
+            <summary>
+            The Return code <paramref name="rc"/> is (length of short name) if short_name buffer is too short.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.Longitude2UtmZone(System.Double)">
+            <summary>
+            Get the UTM zone best matching the longitude coordinate
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.S_PROJECTIONSHORTNAME(System.String,System.Text.StringBuilder,System.Int32,System.Int32@)">
+            <summary>
+            The Return code <paramref name="rc"/> is (length of short name) if short_name buffer is too short.
+            </summary>
+            <param name="projString">A string the the WKT format for a spatial reference system</param>
+            <param name="shortName">Stringbuffer to copy name to</param>
+            <param name="maxLenShortName">Capacity of <paramref name="shortName"/> stringbuffer</param>
+            <param name="rc">Return code</param>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.ProjectionShortName(System.String)">
+            <summary>
+            Get the short name out of a WKT projetion string. 
+            <para>
+            The short name is not unique amongst all WKT projections
+            </para>
+            <para>
+            If the <paramref name="projString"/> is not a WKT projection string, 
+            the <paramref name="projString"/> itself is returned as the short name.
+            </para>
+            </summary>
+            <param name="projString">A WKT projection string</param>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.ProjectionOrigin(System.String,System.Double@,System.Double@)">
+            <summary>
+            If the projection string is not a valid WKT string, an exception is thrown.
+            </summary>
+            <param name="projstring">A string the the WKT format for a spatial reference system</param>
+            <param name="lon">Longitude coordinate of the projection origin</param>
+            <param name="lat">Latitude coordinate of the projection origin</param>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.AreIdentical(System.String,System.String)">
+            <summary>
+            Function that checks if two projecions are identical
+            </summary>
+            <param name="proj1"></param>
+            <param name="proj2"></param>
+            <returns></returns>
+        </member>
+        <member name="M:DHI.Projections.MzCartDLLWrapper.ConvertWkt2Proj4(System.String,System.Double[])">
+            <summary>
+            Function that converts a map projection string in WKT (PRJ) format to PROJ.4 format.
+            <para>
+            Optional datum shift parameters can be provided, but you can also specify 
+            <paramref name="datumShiftParameters"/> as null.
+            </para>
+            <para>
+            Datum shift parameter must be specified in order and unit as defined in the Proj.4 
+            projection string.
+            </para>
+            </summary>
+            <param name="wktProjectionString">Full WKT projection string</param>
+            <param name="datumShiftParameters">Optional array of datum shift parameters, null if not applicable.</param>
+        </member>
+        <member name="T:DHI.Projections.ProjectionException">
+            <summary>
+            Custom exception thrown when a Projection error occurs
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.ProjectionException.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the ProjectionException class with a specified error message
+            </summary>
+        </member>
+        <member name="T:DHI.Projections.ProjectionTranslator">
+            <summary>
+            Class for translating between different projection strings
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.ProjectionTranslator.ConvertWkt2Proj4(System.String)">
+            <summary>
+            Function that converts a map projection string in WKT (PRJ) format to PROJ.4 format.
+            </summary>
+            <param name="wktProjectionString">Full WKT projection string</param>
+        </member>
+        <member name="M:DHI.Projections.ProjectionTranslator.ConvertWkt2Proj4(System.String,System.Double[])">
+            <summary>
+            Function that converts a map projection string in WKT (PRJ) format to PROJ.4 format.
+            <para>
+            Optional datum shift parameters to wgs84 datum (going to WGS84) can be provided, 
+            but you can also specify <paramref name="datumShiftParameters"/> as null.
+            </para>
+            <para>
+            Datum shift parameter must be specified in order and unit as defined in the Proj.4 
+            projection string:
+            <code>
+            delta_x, 
+            delta_y, 
+            delta_z, 
+            Rx - rotation X, 
+            Ry - rotation Y, 
+            Rz - rotation Z, 
+            M_BF - Scaling. 
+            </code>
+            The three translation parameters are in meters. The rotational parameters are in seconds of arc. 
+            The scaling is the scale change in parts per million. In case of a 3 parameter conversion, only
+            the 3 translation parameters needs to be specified.
+            </para>
+            </summary>
+            <param name="wktProjectionString">Full WKT projection string</param>
+            <param name="datumShiftParameters">Optional array of datum shift parameters, null if not applicable.</param>
+        </member>
+        <member name="T:DHI.Projections.Reprojector">
+            <summary>
+            The Reprojector class handles conversion from a source map projection to a target map projection. 
+            The conversion can be performed with or without height. The conversion automatically handles datum 
+            (ellipsoid) conversions, and can also perform datum shifts.
+            <para>
+            The <see cref="P:DHI.Projections.Reprojector.TypeOfConversion"/> defines type of coordinates used in conversion.
+            </para>
+            <para>
+            The reprojection conversion from source map projection to target map projection coordinates works as follows:
+            <list type="bullet">
+            <item>Source projection coordinates (east, north) are converted to source geographic coordinates (lon, lat)</item>
+            <item>Source geographic coordinates (lon, lat, height) are converted to source Eucledian datum coordinates (x,y,z)</item>
+            <item>Datum shift is applied, if specified, to target Eucledian datum coordinates (x,y,z)</item>
+            <item>Target Eucledian datum coordinates (x,y,z) are converted to target geographic coordinates (lon, lat, height)</item>
+            <item>Target geographic coordinates (lon, lat) are converted to target projection coordinates (east, north)</item>
+            </list>
+            When datum shift parameters are not specified, and the datums (ellipsoids) of the source and the target
+            are identical, the three middel steps are skipped. The three middle steps can also be bypassed
+            by setting explicitly the <see cref="M:DHI.Projections.Reprojector.BypassDatumConversions"/> property to false. That will give incorrect
+            results, however especially some graphical tools does this for performance reasons: 
+            Visually the results will look ok as long 
+            as all data are defined in projections sharing the same datum (ellipsoid), and all visualization take place in 
+            target projection - if data are defined in projections using different datums (ellipsoids), errors will occur.   
+            </para>
+            <para>
+            The datum shift works in a two step process:
+            <list type="bullet">
+            <item>Source datum shift conversion is applied, if specified</item>
+            <item>Target datum shift inverse conversion is applied, if specified</item>
+            </list>
+            </para>
+            <para>
+            It is possible to specify datum shift parameters for as well the source as the target
+            map projection. 
+            </para>
+            <para>
+            If datum shift parameters directly from source to target is known, this must be set as
+            the source datum shift parameters. 
+            </para>
+            <para>
+            If datum shift parameters directly from target to source is known, this must be set as 
+            the target datum shift parameters.  
+            </para>
+            <para>
+            If datum shift parameters is known from both source and target to
+            a common datum, both set of parameters must be specified. Then a reprojection will first
+            convert from source datum to common datum, and then from common datum to target datum by an
+            inverse datum shift operation.
+            </para>
+            </summary>
+            <example>
+            <code>
+              // Projection strings are truncated due to their lenghts.
+              string utm20NNad1927 = @"PROJCS[""NAD_1927_UTM_Zone_20N"", ... 
+              string utm20NWgs84 = @"PROJCS[""WGS_1984_UTM_Zone_20N"", ... 
+            
+              // Create reprojector.
+              Reprojector reprojector = new Reprojector(utm20NNad1927, utm20NWgs84);
+            
+              // Conversion from projection-to-projection coordinates, no height
+              x = 35000; y = 6000000;
+              reprojector.Convert(ref x, ref y);
+            
+              // Converting from projection-to-geographical coordiantes, including height
+              reprojector.TypeOfConversion = Reprojector.ConversionType.Proj2Geo;
+              x = 35000; y = 6000000; h = 100;
+              reprojector.Convert(ref x, ref y, ref h);
+            </code>
+            </example>
+        </member>
+        <member name="T:DHI.Projections.Reprojector.Side">
+            <summary>
+            Side of conversion in reprojection
+            </summary>
+        </member>
+        <member name="F:DHI.Projections.Reprojector.Side.Source">
+            <summary> Source side </summary>
+        </member>
+        <member name="F:DHI.Projections.Reprojector.Side.Target">
+            <summary> Target side </summary>
+        </member>
+        <member name="T:DHI.Projections.Reprojector.ConversionType">
+            <summary>
+            Type of conversion
+            </summary>
+        </member>
+        <member name="F:DHI.Projections.Reprojector.ConversionType.Proj2Proj">
+            <summary> Convert from source projection coordinates to target projection coordinates</summary>
+        </member>
+        <member name="F:DHI.Projections.Reprojector.ConversionType.Proj2Geo">
+            <summary> Convert from source projection coordinates to target geographic coordinates</summary>
+        </member>
+        <member name="F:DHI.Projections.Reprojector.ConversionType.Geo2Proj">
+            <summary> Convert from source geographic coordinates to target projection coordinates</summary>
+        </member>
+        <member name="F:DHI.Projections.Reprojector.ConversionType.Geo2Geo">
+            <summary> Convert from source geographic coordinates to target geographic coordinates</summary>
+        </member>
+        <member name="F:DHI.Projections.Reprojector.DatumShiftType.None">
+            <summary> No datum shift is to be applied </summary>
+        </member>
+        <member name="F:DHI.Projections.Reprojector.DatumShiftType.Param3">
+            <summary> Using 3 parameter datum shift </summary>
+        </member>
+        <member name="F:DHI.Projections.Reprojector.DatumShiftType.Param7">
+            <summary> Using 7 parameter datum shift </summary>
+        </member>
+        <member name="M:DHI.Projections.Reprojector.#ctor(System.String,System.String)">
+            <summary>
+            Create a new reprojector object, converting from source to target as specified in the
+            arguments.
+            </summary>
+            <param name="projectionStringSource">String for source map projection, in the WKT format for a spatial reference system, or one of the abbreviations</param>
+            <param name="projectionStringTarget">String for target map projection, in the WKT format for a spatial reference system, or one of the abbreviations</param>
+        </member>
+        <member name="M:DHI.Projections.Reprojector.#ctor(System.String,System.String,System.Boolean)">
+            <summary>
+            Create a new reprojector object, converting from source to target as specified in the
+            arguments.
+            </summary>
+            <param name="projectionStringSource">String for source map projection, in the WKT format for a spatial reference system, or one of the abbreviations</param>
+            <param name="projectionStringTarget">String for target map projection, in the WKT format for a spatial reference system, or one of the abbreviations</param>
+            <param name="validateProjectionStrings">Bool specifying if projectionstrings should be validated or not. 
+            It is fairly expensive to validate the projection strings, and the validation can be skipped by setting this flag to false. 
+            Then the user must beforehand check that the projection is valid by calling <see cref="M:DHI.Projections.MapProjection.IsValid(System.String)"/>. </param>
+        </member>
+        <member name="M:DHI.Projections.Reprojector.Finalize">
+            <summary>
+            Release ressources on the unmanaged side when garbage collected.
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.Reprojector.ProjectionStringTarget">
+            <summary>
+            Source Map Projection
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.Reprojector.ProjectionStringSource">
+            <summary>
+            Target Map Projection
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.Reprojector.Dispose">
+            <summary>
+            Release ressources on the unmanaged side.
+            </summary>
+            <remarks>
+            The Dispose method must be private; The user should not be able 
+            to call this method directly.
+            </remarks>
+        </member>
+        <member name="F:DHI.Projections.Reprojector._typeOfConversion">
+            <summary>
+            Type of conversion, default is proj2proj (check the CMzDatumConverter class)
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.Reprojector.TypeOfConversion">
+            <summary>
+            Type of conversion. Default is <see cref="F:DHI.Projections.Reprojector.ConversionType.Proj2Proj"/>.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.Reprojector.InvertOrder">
+            <summary>
+            Invert the order of the conversion, by swapping the source and the target map 
+            projection, including any datum shift parameters.
+            <para>
+            Also the <see cref="P:DHI.Projections.Reprojector.TypeOfConversion"/> will be inverted, 
+            i.e. a type of <see cref="F:DHI.Projections.Reprojector.ConversionType.Proj2Geo"/> will be changed to 
+            <see cref="F:DHI.Projections.Reprojector.ConversionType.Geo2Proj"/> and vice versa.
+            </para>
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.Reprojector.DoDatumConversions">
+            <summary>
+            Flag informing whether datum conversions are enabled or disabled.
+            <para>
+            Datum conversions are by default enabled, 
+            and disabled only if the datums (ellipsoids) of the source and 
+            target are the same, AND no datum shifts has been specified.
+            </para>
+            <para>
+            Datum conversions can be explicitly bypassed by calling <see cref="M:DHI.Projections.Reprojector.BypassDatumConversions"/>.
+            </para>
+            The flag can be reset to its default value by calling <see cref="M:DHI.Projections.Reprojector.ResetDoDatumConversions"/>.
+            <para>
+            Call to any of the SetDatumShiftParameters or the <see cref="M:DHI.Projections.Reprojector.SetNoDatumShift(DHI.Projections.Reprojector.Side)"/>
+            methods will also revert this flag to its default value.
+            </para>
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.Reprojector.BypassDatumConversions">
+            <summary>
+            Explicitly bypass datum conversions, setting the <see cref="P:DHI.Projections.Reprojector.DoDatumConversions"/> to false.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.Reprojector.ResetDoDatumConversions">
+            <summary>
+            Reset the <see cref="P:DHI.Projections.Reprojector.DoDatumConversions"/> flag to its default value.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.Reprojector.SetNoDatumShift(DHI.Projections.Reprojector.Side)">
+            <summary>
+            Disable datum shift calculations for either the source or the target.
+            <para>
+            This call will reset the <see cref="M:DHI.Projections.Reprojector.BypassDatumConversions"/> flag
+            </para>
+            </summary>
+            <param name="side">Side to apply to, source or target</param>
+        </member>
+        <member name="M:DHI.Projections.Reprojector.SetDatumShiftParameters(DHI.Projections.Reprojector.Side,System.Double,System.Double,System.Double)">
+            <summary>
+            Sets the 3-parameter datum shift parameters of either the source or the target map projection.
+            <para>
+            This call will reset the <see cref="M:DHI.Projections.Reprojector.BypassDatumConversions"/> flag
+            </para>
+            </summary>
+            <param name="side">Side to apply to, source or target</param>
+            <param name="dx">dx in meters</param>
+            <param name="dy">dy in meters</param>
+            <param name="dz">dz in meters</param>
+        </member>
+        <member name="M:DHI.Projections.Reprojector.SetDatumShiftParameters(DHI.Projections.Reprojector.Side,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Sets the 7-parameter datum shift parameters of either the source or the target map projection.
+            </summary>
+            <param name="side">Side to apply to, source or target</param>
+            <param name="dx">dx in meters</param>
+            <param name="dy">dy in meters</param>
+            <param name="dz">dz in meters</param>
+            <param name="rx">Rx in radians. Be aware: Often rotation parameters are given in arcsec</param>
+            <param name="ry">Ry in radians. Be aware: Often rotation parameters are given in arcsec</param>
+            <param name="rz">Rz in radians. Be aware: Often rotation parameters are given in arcsec</param>
+            <param name="sc">Scale difference, dimensionless. Be aware: Often the scale difference is given in ppm</param>
+        </member>
+        <member name="M:DHI.Projections.Reprojector.Convert(System.Double@,System.Double@)">
+            <summary>
+            Converts a point (x, y) from the source map projection to the target map projection.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.Reprojector.InvConvert(System.Double@,System.Double@)">
+            <summary>
+            Inverse conversion, converts a point (x, y) from the target map projection to the source map projection.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.Reprojector.Convert(System.Double@,System.Double@,System.Double@)">
+            <summary>
+            Converts a point (x, y, h) from the source map projection to the target map projection.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.Reprojector.InvConvert(System.Double@,System.Double@,System.Double@)">
+            <summary>
+            Inverse conversion, converts a point (x, y, h) from the target map projection to the source map projection.
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.Reprojector.DatumShift(System.Double@,System.Double@,System.Double@)">
+            <summary>
+            Converts a point in Euclidean coordinates (x, y, z) relative to the source datum center to 
+            Euclidean coordinates relative to the target datum center. 
+            <para>
+            This is done in a two step process. First the coordinates are converted from the source 
+            datum center to an arbitrary geocentric Euclidean space, and from there it's converted
+            to the target datum center.
+            </para>
+            </summary>
+            <param name="x">Euclidean x coordinate</param>
+            <param name="y">Euclidean y coordinate</param>
+            <param name="z">Euclidean z coordinate</param>
+        </member>
+        <member name="M:DHI.Projections.Reprojector.InvDatumShift(System.Double@,System.Double@,System.Double@)">
+            <summary>
+            Inverse conversion, converts a point in Euclidean coordinates (x, y, z) relative to the 
+            target datum center to Euclidean coordinates relative to the source datum center. 
+            <para>
+            This is done in a two step process. First the coordinates are converted from the target 
+            datum center to an arbitrary geocentric Euclidean space, and from there it's converted
+            to the source datum center.
+            </para>
+            </summary>
+            <param name="x">Euclidean x coordinate</param>
+            <param name="y">Euclidean y coordinate</param>
+            <param name="z">Euclidean z coordinate</param>
+        </member>
+        <member name="T:DHI.Projections.XyEnvelope">
+            <summary>
+            Defines a rectangular region in (X-Y) local coordinates, representing
+            a bounding box for a set of coordinates (a geometry), which can be defined
+            in geographic, projected or local grid coordinates.
+            <para>
+            It is created with a <see cref="P:DHI.Projections.XyEnvelope.Cartography"/> object, defining the local
+            grid coordinate system.
+            </para>
+            <para>
+            It is possible to move the origin of the local grid coordinate system
+            using the <see cref="M:DHI.Projections.XyEnvelope.MoveGridOrigin(System.Double,System.Double)"/>, which will also move and update the
+            <see cref="P:DHI.Projections.XyEnvelope.Cartography"/> object to the new origin.
+            </para>
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.XyEnvelope.XMin">
+            <summary>
+             Returns the Envelopes minimum x-value. min x > max x
+             indicates that this is a null Envelope.
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.XyEnvelope.XMax">
+            <summary>
+             Returns the Envelopes maximum x-value. min x > max x
+             indicates that this is a null Envelope.
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.XyEnvelope.YMin">
+            <summary>
+             Returns the Envelopes minimum y-value. min y > max y
+             indicates that this is a null Envelope.
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.XyEnvelope.YMax">
+            <summary>
+             Returns the Envelopes maximum y-value. min y > max y
+             indicates that this is a null Envelope.
+            </summary>
+        </member>
+        <member name="P:DHI.Projections.XyEnvelope.Cartography">
+            <summary>
+            Cartography object currently used by object
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.XyEnvelope.#ctor(DHI.Projections.Cartography)">
+            <summary>
+            Create a new <see cref="T:DHI.Projections.XyEnvelope"/> object
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.XyEnvelope.IncludeXy(System.Double,System.Double)">
+            <summary>
+            Include the local grid coordinate (x,y) in the envelope
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.XyEnvelope.IncludeProj(System.Double,System.Double)">
+            <summary>
+            Include the projection coordinate (east,north) in the envelope
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.XyEnvelope.IncludeGeo(System.Double,System.Double)">
+            <summary>
+            Include the Geographic coordinate (lon,lat) in the envelope
+            </summary>
+        </member>
+        <member name="M:DHI.Projections.XyEnvelope.MoveGridOrigin(System.Double,System.Double)">
+            <summary>
+            Move the origin of the local grid (x,y) coordinate system to 
+            the specified (x,y) coordinates, i.e. the specified (x,y) 
+            coordinate will match (0,0) in the new local grid coordinate system.
+            <para>
+            Also the <see cref="P:DHI.Projections.XyEnvelope.Cartography"/> object is updated to new origin
+            </para>
+            </summary>
+            <param name="xOriginNew">X coordinate of new grid origin</param>
+            <param name="yOriginNew">Y coordinate of new grid origin</param>
+        </member>
+    </members>
+</doc>
