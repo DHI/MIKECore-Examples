@@ -69,6 +69,17 @@ namespace DHI.SDK.Examples
         Console.Out.WriteLine("Number of time steps does not match, using the smallest number");
       }
 
+      // For recording max difference for every item
+      double[] maxDiff = new double[dfs1.ItemInfo.Count];
+      // Index in time (index) of maximum and first difference. -1 if no difference
+      int[] maxDiffTime = new int[dfs1.ItemInfo.Count];
+      int[] firstDiffTime = new int[dfs1.ItemInfo.Count];
+      for (int i = 0; i < dfs1.ItemInfo.Count; i++)
+      {
+        maxDiffTime[i] = -1;
+        firstDiffTime[i] = -1;
+      }
+
       // Copy over info from the first file, assuming the second file contains the same data.
       IDfsFileInfo fileInfo = dfs1.FileInfo;
 
@@ -125,7 +136,7 @@ namespace DHI.SDK.Examples
       // Create file
       builder.CreateFile(filediff);
 
-      // Copy over static items, assuming the static items of file 2 is identical
+      // Copy over static items from file 1, assuming the static items of file 2 are identical
       IDfsStaticItem si1;
       while (null != (si1 = dfs1.ReadStaticItemNext()))
       {
@@ -146,7 +157,16 @@ namespace DHI.SDK.Examples
             IDfsItemData<float> data2 = dfs2.ReadItemTimeStepNext() as IDfsItemData<float>;
             for (int k = 0; k < data1.Data.Length; k++)
             {
-              data1.Data[k] = data1.Data[k] - data2.Data[k];
+              float valuediff = data1.Data[k] - data2.Data[k];
+              data1.Data[k] = valuediff;
+              float absValueDiff = Math.Abs(valuediff);
+              if (absValueDiff > maxDiff[j])
+              {
+                maxDiff[j]     = absValueDiff;
+                maxDiffTime[j] = i;
+                if (firstDiffTime[j] == -1)
+                  firstDiffTime[j] = i;
+              }
             }
             diff.WriteItemTimeStepNext(data1.Time, data1.Data);
           }
@@ -156,15 +176,39 @@ namespace DHI.SDK.Examples
             IDfsItemData<double> data2 = dfs2.ReadItemTimeStepNext() as IDfsItemData<double>;
             for (int k = 0; k < data1.Data.Length; k++)
             {
-              data1.Data[k] = data1.Data[k] - data2.Data[k];
+              double valuediff = data1.Data[k] - data2.Data[k];
+              data1.Data[k] = valuediff;
+              double absValueDiff = Math.Abs(valuediff);
+              if (absValueDiff > maxDiff[j])
+              {
+                maxDiff[j]     = absValueDiff;
+                maxDiffTime[j] = i;
+                if (firstDiffTime[j] == -1)
+                  firstDiffTime[j] = i;
+              }
             }
             diff.WriteItemTimeStepNext(data1.Time, data1.Data);
           }
         }
       }
+
+      System.Console.WriteLine("Difference statistics:");
+      for (int i = 0; i < maxDiffTime.Length; i++)
+      {
+        if (maxDiffTime[i] < 0)
+        {
+          Console.WriteLine("{0,-30}: no difference", dfs1.ItemInfo[i].Name);
+        }
+        else
+        {
+          Console.WriteLine("{0,-30}: Max difference at timestep {1,3}: {2}. First difference at timestep {3}", dfs1.ItemInfo[i].Name, maxDiffTime[i], maxDiff[i], firstDiffTime[i]);
+        }
+      }
+
       dfs1.Close();
       dfs2.Close();
       diff.Close();
+
     }
   }
 }
