@@ -2,6 +2,7 @@
 using DHI.Generic.MikeZero;
 using DHI.Generic.MikeZero.DFS;
 using DHI.Generic.MikeZero.DFS.dfs123;
+using NUnit.Framework;
 
 // ReSharper disable RedundantAssignment
 #pragma warning disable 168 // disable warning for 'never used' variables in Visual Studio
@@ -293,6 +294,25 @@ namespace DHI.SDK.Examples
       file.WriteItemTimeStepNext(0, bathyDataArray);
 
       file.Close();
+    }
+
+    /// <summary>
+    /// Example of how to resample a dfs2 file in x/y space
+    /// </summary>
+    /// <param name="inputFilename">Path and name of the file to resample</param>
+    /// <param name="outputFilename">Path and name of the new file to create</param>
+    public static void Resample(string inputFilename, string outputFilename)
+    {
+      // Load dfs2 file
+      Dfs2File dfs2File = DfsFileFactory.Dfs2FileOpen(inputFilename);
+      IDfsAxisEqD2 axis = (IDfsAxisEqD2)dfs2File.SpatialAxis;
+      
+      // Create reprojector
+      Dfs2Reprojector reproj = new Dfs2Reprojector(dfs2File, outputFilename);
+      // Set same target as input file, just changing the number of cells in the x and y direction
+      reproj.SetTarget(dfs2File.FileInfo.Projection.WKTString, dfs2File.FileInfo.Projection.Orientation, axis.XCount/2, axis.YCount/2);
+      // Create new file
+      reproj.Process();
     }
 
     /// <summary>
