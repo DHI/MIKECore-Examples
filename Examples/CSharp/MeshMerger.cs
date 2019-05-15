@@ -369,7 +369,7 @@ namespace DHI.SDK.Examples
         }
       }
 
-      // Check if all faces has a reverse face.
+      // Check which faces have a reverse face.
       bool[] boundaryNode = new bool[code.Count];
       for (int i = 0; i < nodeFaces.Length; i++)
       {
