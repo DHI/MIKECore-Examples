@@ -91,7 +91,7 @@ namespace DHI.SDK.Examples
     /// </summary>
     /// <param name="files">List of mesh file names to merge</param>
     /// <param name="fileBoundaryCodesToRemove">List of boundary codes to remove for each mesh. Must match the size of the files argument</param>
-    public void Process(List<string> files, List<List<int>> fileBoundaryCodesToRemove)
+    public void Process(List<string> files, List<List<int>> fileBoundaryCodesToRemove = null)
     {
       // Extent of entire domain, all meshes
       Extent extent = new Extent();
@@ -120,7 +120,8 @@ namespace DHI.SDK.Examples
       for (int i = 0; i < files.Count; i++)
       {
         int prevNodeMergeCount = NodeMergeCount;
-        AddMesh(meshes[i], fileBoundaryCodesToRemove[i]);
+        List<int> boundaryCodesToRemove = fileBoundaryCodesToRemove != null ? fileBoundaryCodesToRemove[i] : null;
+        AddMesh(meshes[i], boundaryCodesToRemove);
         if (i > 0)
         {
           Console.Out.WriteLine("Mesh {0}, number of nodes merged in: {1}", i+1, NodeMergeCount-prevNodeMergeCount);
@@ -128,6 +129,7 @@ namespace DHI.SDK.Examples
       }
       Console.Out.WriteLine("Total number of nodes merged in  : {0}", NodeMergeCount);
 
+      RemoveInternalBoundaryCodes(_code, _connectivity);
 
       // Create new mesh file
       string projection = meshes[0].ProjectionString;
@@ -226,7 +228,7 @@ namespace DHI.SDK.Examples
       }
     }
 
-    private void AddMesh(MeshFile mesh, List<int> boundaryCodesToRemove)
+    private void AddMesh(MeshFile mesh, List<int> boundaryCodesToRemove = null)
     {
       
       // node numbers in new mesh for each node in provided mesh
@@ -249,7 +251,7 @@ namespace DHI.SDK.Examples
 
         bool boundaryNode = code != 0;
 
-        if (boundaryCodesToRemove.Contains(code))
+        if (boundaryCodesToRemove != null && boundaryCodesToRemove.Contains(code))
           code = 0;
 
         // This criteria selects which nodes to try to merge on, i.e. 
@@ -343,6 +345,60 @@ namespace DHI.SDK.Examples
 
     }
 
+    /// <summary>
+    /// Remove boundary code from internal nodes,
+    /// i.e. nodes that are not on the boundary.
+    /// </summary>
+    private void RemoveInternalBoundaryCodes(List<int> code, List<int[]> connectivity)
+    {
+      // Store all faces, based on start-node, store end-node
+      // Be aware that the connectivity is 1-based, indexing is zero based.
+      List<int>[] nodeFaces = new List<int>[code.Count];
+      for (int i = 0; i < code.Count; i++)
+      {
+        nodeFaces[i] = new List<int>();
+      }
+      for (int i = 0; i < connectivity.Count; i++)
+      {
+        int[] elmt = connectivity[i];
+        for (int j = 0; j < elmt.Length; j++)
+        {
+          int startNode = elmt[j];
+          int endNode   = elmt[(j + 1) % elmt.Length];
+          nodeFaces[startNode-1].Add(endNode);
+        }
+      }
+
+      // Check if all faces has a reverse face.
+      bool[] boundaryNode = new bool[code.Count];
+      for (int i = 0; i < nodeFaces.Length; i++)
+      {
+        int startNode = i + 1;
+        // Loop over all faces
+        List<int> faceEndNodes = nodeFaces[i];
+        for (int j = 0; j < faceEndNodes.Count; j++)
+        {
+          int endNode = faceEndNodes[j];
+          // Check if "reverse" face is found
+          if (!nodeFaces[endNode - 1].Contains(startNode))
+          {
+            // "Reverse" face was not found, this is a boundary face
+            boundaryNode[startNode - 1] = true;
+            boundaryNode[endNode - 1] = true;
+          }
+        }
+      }
+
+      // Remove code for all but boundary nodes
+      for (int i = 0; i < code.Count; i++)
+      {
+        if (!boundaryNode[i])
+          code[i] = 0;
+      }
+    }
+
+
+
     private void UpdatePointExtent(Extent e, double x, double y, double tol)
     {
       e.XMin = x - tol;
@@ -385,7 +441,7 @@ boundary nodes can end up in the middle of the mesh.
     {
       try
       {
-        if (args.Length <= 3)
+        if (args.Length < 3)
         {
           Usage();
           return -1;
