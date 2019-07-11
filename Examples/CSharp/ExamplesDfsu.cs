@@ -149,6 +149,8 @@ namespace DHI.SDK.Examples
     {
       // Open file for editing
       IDfsuFile dfsuFile = DfsuFile.OpenEdit(filename);
+      dfsuFile.TimeStepInSeconds /= 2;
+      dfsuFile.StartDateTime = new DateTime(2019,6,27,13,50,30);
 
       // Make a rotation matrix
       double rotation = 125.0 / 180.0 * Math.PI;
@@ -368,6 +370,23 @@ namespace DHI.SDK.Examples
       file.Close();
     }
 
+    public static readonly string ExtractDfsu2DLayerFrom3DUsage = @"
+    -dfsuExtractLayer: Extract layer from 3D dfsu
+
+        DHI.MikeCore.Util -dfsuExtractLayer [filenameDfsu3] [outputFilenameDfsu2] [layerNumber]
+
+        Extract a single layer from a 3D dfsu file, and write it to a 2D dfsu file.
+
+        [LayerNumber] is the layer to extract
+          - Positive values count from bottom up i.e. 1 is bottom layer, 2 is 
+            second layer from bottom etc.
+          - Negative values count from top down, i.e. -1 is toplayer, -2 is 
+            second layer from top etc.
+
+        If a layer value does not exist for a certain 2D element, delete value is written
+        to the 2D resut file. This is relevant for Sigma-Z type of files.
+";
+
     /// <summary>
     /// Extract a single layer from a 3D dfsu file, and write it to a 2D dfsu file.
     /// <para>
@@ -382,7 +401,7 @@ namespace DHI.SDK.Examples
     ///     Positive values count from bottom up i.e. 1 is bottom layer, 2 is second layer from bottom etc.  
     ///   </para>
     ///   <para>
-    ///     Netagive values count from top down, i.e. -1 is toplayer, -2 is second layer from top etc.
+    ///     Negative values count from top down, i.e. -1 is toplayer, -2 is second layer from top etc.
     ///   </para>
     /// </param>
     public static void ExtractDfsu2DLayerFrom3D(string filenameDfsu3, string filenameDfsu2, int layerNumber)
@@ -789,18 +808,29 @@ namespace DHI.SDK.Examples
       dfs2.Close();
     }
 
+    public static readonly string ExtractSubareaDfsu2DUsage = @"
+    -dfsuExtractSubArea: Extract subarea of dfsu file
+
+        DHI.MikeCore.Util -dfsuExtractSubArea [sourceFilename] [outputFilename] [x1] [y2] [x2] [y2]
+
+        Extract sub-area of dfsu (2D) file to a new dfsu file
+
+        (x1,y1) is coordiante for lower left corner of sub area
+        (x2,y2) is coordiante for upper right corner of sub area
+";
+
+
     /// <summary>
     /// Extract sub-area of dfsu (2D) file to a new dfsu file
     /// </summary>
     /// <param name="sourceFilename">Name of source file, i.e. OresundHD.dfsu test file</param>
     /// <param name="outputFilename">Name of output file</param>
-    public static void ExtractSubareaDfsu2D(string sourceFilename, string outputFilename)
+    /// <param name="x1">Lower left x coordinate of sub area</param>
+    /// <param name="y1">Lower left y coordinate of sub area</param>
+    /// <param name="x2">upper right x coordinate of sub area</param>
+    /// <param name="y2">upper right y coordinate of sub area</param>
+    public static void ExtractSubareaDfsu2D(string sourceFilename, string outputFilename, double x1, double y1, double x2, double y2)
     {
-      // Area to extract
-      double x1 = 345000;
-      double x2 = x1 + 20000;
-      double y1 = 6155000;
-      double y2 = y1 + 20000;
 
       DfsuFile dfsu = DfsFileFactory.DfsuFileOpen(sourceFilename);
 
