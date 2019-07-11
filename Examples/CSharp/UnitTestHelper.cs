@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -14,7 +13,7 @@ namespace DHI.SDK.Examples
     /// <summary>
     /// Relative path to test data. Must end with a \
     /// </summary>
-    public static string TestDataRootRelative = @"..\..\..\..\TestData\";
+    public static string TestDataRootRelative = @"..\..\..\..\..\TestData\";
 
     /// <summary>
     /// Path to test data
