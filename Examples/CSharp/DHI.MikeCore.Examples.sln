@@ -5,16 +5,22 @@ VisualStudioVersion = 15.0.27703.2035
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DHI.MikeCore.Examples", "DHI.MikeCore.Examples.csproj", "{88139FF4-5918-439A-AF68-E93B55B15783}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DHI.MikeCore.Util", "DHI.MikeCore.Util\DHI.MikeCore.Util.csproj", "{5E47AAF3-138D-4833-B951-A5FFA1186406}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|Any CPU = Debug|Any CPU
-		Release|Any CPU = Release|Any CPU
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{88139FF4-5918-439A-AF68-E93B55B15783}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{88139FF4-5918-439A-AF68-E93B55B15783}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{88139FF4-5918-439A-AF68-E93B55B15783}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{88139FF4-5918-439A-AF68-E93B55B15783}.Release|Any CPU.Build.0 = Release|Any CPU
+		{88139FF4-5918-439A-AF68-E93B55B15783}.Debug|x64.ActiveCfg = Debug|x64
+		{88139FF4-5918-439A-AF68-E93B55B15783}.Debug|x64.Build.0 = Debug|x64
+		{88139FF4-5918-439A-AF68-E93B55B15783}.Release|x64.ActiveCfg = Release|x64
+		{88139FF4-5918-439A-AF68-E93B55B15783}.Release|x64.Build.0 = Release|x64
+		{5E47AAF3-138D-4833-B951-A5FFA1186406}.Debug|x64.ActiveCfg = Debug|x64
+		{5E47AAF3-138D-4833-B951-A5FFA1186406}.Debug|x64.Build.0 = Debug|x64
+		{5E47AAF3-138D-4833-B951-A5FFA1186406}.Release|x64.ActiveCfg = Release|x64
+		{5E47AAF3-138D-4833-B951-A5FFA1186406}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
