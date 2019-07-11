@@ -1,8 +1,9 @@
 ﻿using System;
+using System.Linq;
 using DHI.Generic.MikeZero;
 using DHI.Generic.MikeZero.DFS;
 using DHI.Generic.MikeZero.DFS.dfs123;
-using NUnit.Framework;
+using DHI.Projections;
 
 // ReSharper disable RedundantAssignment
 #pragma warning disable 168 // disable warning for 'never used' variables in Visual Studio
@@ -261,6 +262,181 @@ namespace DHI.SDK.Examples
       file.Close();
     }
 
+    public static readonly string MaxVelocityFieldUsage = @"
+    -MaxVelocityField: Create maximum velocity field for a dfs2 file
+
+        DHI.MikeCore.Util -MaxVelocityField [sourceFilename] [outputFilename]
+
+        From a dfs2 file containing items (H-P-Q), (P-Q-Speed) or  (u-v-Speed), 
+        find maximum velocity for each cell and store in [outputFilename]
+";
+
+    /// <summary>
+    /// Create maximum velocity field for a dfs2 file
+    /// <para>
+    /// FFrom a dfs2 file containing items (H-P-Q), (P-Q-Speed) or  (u-v-Speed), 
+    /// find maximum velocity for each cell and store in [outputFilename] 
+    /// </para>
+    /// </summary>
+    public static void MaxVelocityField(string sourceFilename, string outfilename)
+    {
+      // Open source file
+      IDfs2File source = DfsFileFactory.Dfs2FileOpen(sourceFilename);
+
+      // Create output file
+      Dfs2Builder builder = Dfs2Builder.Create("Max Velocity", @"MIKE SDK", 0);
+
+      // Set up the header
+      builder.SetDataType(1);
+      builder.SetGeographicalProjection(source.FileInfo.Projection);
+      builder.SetTemporalAxis(source.FileInfo.TimeAxis);
+      builder.SetSpatialAxis(source.SpatialAxis);
+      builder.DeleteValueFloat = -1e-30f;
+
+      // Add custom block 
+      foreach (IDfsCustomBlock customBlock in source.FileInfo.CustomBlocks)
+      {
+        builder.AddCustomBlock(customBlock);
+      }
+
+      // Set up dynamic items
+      builder.AddDynamicItem("Maximum Speed"  , eumQuantity.Create(eumItem.eumIFlowVelocity, eumUnit.eumUmeterPerSec), DfsSimpleType.Float, DataValueType.Instantaneous);
+      builder.AddDynamicItem("u-velocity"     , eumQuantity.Create(eumItem.eumIFlowVelocity, eumUnit.eumUmeterPerSec), DfsSimpleType.Float, DataValueType.Instantaneous);
+      builder.AddDynamicItem("v-velocity"     , eumQuantity.Create(eumItem.eumIFlowVelocity, eumUnit.eumUmeterPerSec), DfsSimpleType.Float, DataValueType.Instantaneous);
+      //builder.AddDynamicItem("H Water Depth m", eumQuantity.Create(eumItem.eumIWaterLevel, eumUnit.eumUmeter), DfsSimpleType.Float, DataValueType.Instantaneous);
+
+      // Create file
+      builder.CreateFile(outfilename);
+
+      // Add static items containing bathymetri data, use data from source
+
+      IDfsStaticItem sourceStaticItem;
+      while(null != (sourceStaticItem = source.ReadStaticItemNext()))
+        builder.AddStaticItem(sourceStaticItem.Name, sourceStaticItem.Quantity, sourceStaticItem.Data);
+
+      // Get the file
+      Dfs2File file = builder.GetFile();
+
+      // Arrays storing max-speed values
+      int numberOfCells = file.SpatialAxis.SizeOfData;
+      float[] maxSpeed    = new float[numberOfCells];
+      float[] uAtMaxSpeed = new float[numberOfCells];
+      float[] vAtMaxSpeed  = new float[numberOfCells];
+      // Initialize with delete values
+      for (int i = 0; i < numberOfCells; i++)
+      {
+        maxSpeed[i] = source.FileInfo.DeleteValueFloat;
+        uAtMaxSpeed[i] = source.FileInfo.DeleteValueFloat;
+        vAtMaxSpeed[i] = source.FileInfo.DeleteValueFloat;
+      }
+
+      // Create empty ItemData's, for easing reading of source data
+      IDfsItemData2D<float>[] datas = new IDfsItemData2D<float>[source.ItemInfo.Count];
+      for (int i = 0; i < source.ItemInfo.Count; i++)
+      {
+        datas[i] = source.CreateEmptyItemData<float>(i + 1);
+      }
+
+      // Find HPQ items in file - uses StartsWith, since the string varies slightly with the version of the engine.
+      int dIndex = source.ItemInfo.FindIndex(item => item.Name.StartsWith("H Water Depth", StringComparison.OrdinalIgnoreCase));
+      int pIndex = source.ItemInfo.FindIndex(item => item.Name.StartsWith("P Flux", StringComparison.OrdinalIgnoreCase));
+      int qIndex = source.ItemInfo.FindIndex(item => item.Name.StartsWith("Q Flux", StringComparison.OrdinalIgnoreCase));
+      int sIndex = source.ItemInfo.FindIndex(item => item.Name.StartsWith("Current Speed", StringComparison.OrdinalIgnoreCase));
+      int uIndex = source.ItemInfo.FindIndex(item => item.Name.StartsWith("U velocity", StringComparison.OrdinalIgnoreCase));
+      int vIndex = source.ItemInfo.FindIndex(item => item.Name.StartsWith("V velocity", StringComparison.OrdinalIgnoreCase));
+      // Either p and q must be there, or u and v, and either d or s must be there.
+      bool haspq = (pIndex >= 0 && qIndex >= 0);
+      bool hasuv = (uIndex >= 0 && vIndex >= 0);
+      if (!hasuv && !haspq || dIndex < 0 && sIndex < 0)
+      {
+        throw new Exception("Could not find items. File must have H-P-Q items, P-Q-Speed or U-V-Speed items");
+      }
+      IDfsItemData2D<float> dItem = dIndex >= 0 ? datas[dIndex] : null;
+      IDfsItemData2D<float> pItem = pIndex >= 0 ? datas[pIndex] : null;
+      IDfsItemData2D<float> qItem = qIndex >= 0 ? datas[qIndex] : null;
+      IDfsItemData2D<float> sItem = sIndex >= 0 ? datas[sIndex] : null;
+      IDfsItemData2D<float> uItem = uIndex >= 0 ? datas[uIndex] : null;
+      IDfsItemData2D<float> vItem = vIndex >= 0 ? datas[vIndex] : null;
+
+      // Spatial 2D axis
+      IDfsAxisEqD2 axis = (IDfsAxisEqD2) source.SpatialAxis;
+      double dx = axis.Dx;
+      double dy = axis.Dy;
+
+      // Loop over all time steps
+      for (int i = 0; i < source.FileInfo.TimeAxis.NumberOfTimeSteps; i++)
+      {
+        // Read data for all items from source file. That will also update the depth, p and q.
+        for (int j = 0; j < source.ItemInfo.Count; j++)
+        {
+          source.ReadItemTimeStep(datas[j], i);
+        }
+
+        // For each cell, find maximum speed and store u, v and depth at that point in time.
+        for (int j = 0; j < numberOfCells; j++)
+        {
+          // Skip delete values
+          if (dItem?.Data[j] == source.FileInfo.DeleteValueFloat ||
+              sItem?.Data[j] == source.FileInfo.DeleteValueFloat)
+            continue;
+
+          double p = pItem.Data[j];
+          double q = qItem.Data[j];
+          double speed, u, v;
+          if (sItem != null)
+          {
+            // Use speed from result file
+            speed = sItem.Data[j];
+
+            if (hasuv) 
+            {
+              // Use u and v from result file
+              u = uItem.Data[j];
+              v = vItem.Data[j];
+            }
+            else // (haspq)
+            {
+              // Calculate u and v from speed and direction of p and q
+              double pqLength = Math.Sqrt(p * p + q * q);
+              u = hasuv ? uItem.Data[j] : speed * p / pqLength;
+              v = hasuv ? vItem.Data[j] : speed * q / pqLength;
+            }
+          }
+          else // (dItem != null)
+          {
+            // Current speed is not directly available in source file, calculate from u and v
+            if (hasuv)
+            {
+              u = uItem.Data[j];
+              v = vItem.Data[j];
+            }
+            else
+            {
+              // u and v is not available, calculate fromdh, p and q.
+              double d = dItem.Data[j];
+              u = pItem.Data[j] / d;
+              v = qItem.Data[j] / d;
+            }
+            speed = Math.Sqrt(u * u + v * v);
+          }
+          if (speed > maxSpeed[j])
+          {
+            maxSpeed[j]    = (float)speed;
+            uAtMaxSpeed[j] = (float)u;
+            vAtMaxSpeed[j] = (float)v;
+          }
+        }
+      }
+
+      file.WriteItemTimeStepNext(0, maxSpeed);
+      file.WriteItemTimeStepNext(0, uAtMaxSpeed);
+      file.WriteItemTimeStepNext(0, vAtMaxSpeed);
+      //file.WriteItemTimeStepNext(0, maxDepth);
+
+      source.Close();
+      file.Close();
+    }
+
     /// <summary>
     /// Example of how to create a M21 Dfs2 Bathymetry from scratch. This method
     /// creates a file matching the OresundBathy900.dfs2 test file.
@@ -296,12 +472,23 @@ namespace DHI.SDK.Examples
       file.Close();
     }
 
+    public static readonly string ResampleUsage = @"
+    -Resample: Resample dfs2 file in x/y space
+
+        DHI.MikeCore.Util -Resample [inputFilename] [outputFilename] [xCount] [yCount]
+
+        Resample the [inputFilename] to contain [xCount] x [yCount] number of cells, and
+        store the result in [outputFilename]
+";
+
     /// <summary>
     /// Example of how to resample a dfs2 file in x/y space
     /// </summary>
     /// <param name="inputFilename">Path and name of the file to resample</param>
     /// <param name="outputFilename">Path and name of the new file to create</param>
-    public static void Resample(string inputFilename, string outputFilename)
+    /// <param name="xCount">Number of cells in x-direction</param>
+    /// <param name="yCount">Number of cells in y-direction</param>
+    public static void Resample(string inputFilename, string outputFilename, int xCount, int yCount)
     {
       // Load dfs2 file
       Dfs2File dfs2File = DfsFileFactory.Dfs2FileOpen(inputFilename);
@@ -309,8 +496,21 @@ namespace DHI.SDK.Examples
       
       // Create reprojector
       Dfs2Reprojector reproj = new Dfs2Reprojector(dfs2File, outputFilename);
-      // Set same target as input file, just changing the number of cells in the x and y direction
-      reproj.SetTarget(dfs2File.FileInfo.Projection.WKTString, dfs2File.FileInfo.Projection.Orientation, axis.XCount/2, axis.YCount/2);
+
+      // scale change
+      double dxScale = (double) axis.XCount / xCount;
+      double dyScale = (double) axis.YCount / yCount;
+
+      // Calculate new lon/lat origin - center of lower left cell
+      Cartography cart = new Cartography(dfs2File.FileInfo.Projection.WKTString, dfs2File.FileInfo.Projection.Longitude, dfs2File.FileInfo.Projection.Latitude, dfs2File.FileInfo.Projection.Orientation);
+      // Change in center of lower left cell
+      double dxOrigin = 0.5 * axis.Dx * (dxScale-1);
+      double dyOrigin = 0.5 * axis.Dy * (dyScale-1);
+      cart.Xy2Geo(dxOrigin, dyOrigin, out double lonOrigin, out double latOrigin);
+
+      // Set new target
+      reproj.SetTarget(dfs2File.FileInfo.Projection.WKTString, lonOrigin, latOrigin, dfs2File.FileInfo.Projection.Orientation, xCount, 0, axis.Dx*dxScale, yCount, 0, axis.Dy*dyScale);
+      reproj.Interpolate = true;
       // Create new file
       reproj.Process();
     }
