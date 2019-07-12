@@ -262,7 +262,7 @@ namespace DHI.SDK.Examples
       file.Close();
     }
 
-    public static readonly string MaxVelocityFieldUsage = @"
+    public static readonly string UsageMaxVelocityField = @"
     -MaxVelocityField: Create maximum velocity field for a dfs2 file
 
         DHI.MikeCore.Util -MaxVelocityField [sourceFilename] [outputFilename]
@@ -472,7 +472,7 @@ namespace DHI.SDK.Examples
       file.Close();
     }
 
-    public static readonly string ResampleUsage = @"
+    public static readonly string UsageResample = @"
     -Resample: Resample dfs2 file in x/y space
 
         DHI.MikeCore.Util -Resample [inputFilename] [outputFilename] [xCount] [yCount]

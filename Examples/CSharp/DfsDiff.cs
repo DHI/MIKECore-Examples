@@ -42,6 +42,26 @@ namespace DHI.SDK.Examples
       CreateDiffFile(file1, file2, filediff);
     }
 
+    public static readonly string UsageCreateDiffFile = @"
+    -dfsDiff: Create difference file between two dfs files
+
+        DHI.MikeCore.Util -dfsDiff [file1] [file2]
+        DHI.MikeCore.Util -dfsDiff [file1] [file2] [outDiffFile]
+
+        The two input files must be equal in structure, e.g. coming
+        from the same simulation but giving different results.
+        Header and static data must be identical, only difference
+        must be in values of the dynamic data.
+
+        If the [outDiffFile] is not specified, no difference file 
+        is created, but a report outputted to the console.
+
+        In case of one file having delete value, and the other not 
+        having delete value, the difference may turn out big, even
+        if in reality the results differ only little, i.e. for 
+        water level results from a flooding simulation.
+";
+
     /// <summary>
     /// Create a new file, being the difference of two files.
     /// <para>
@@ -83,33 +103,38 @@ namespace DHI.SDK.Examples
       // Copy over info from the first file, assuming the second file contains the same data.
       IDfsFileInfo fileInfo = dfs1.FileInfo;
 
-      DfsBuilder builder = DfsBuilder.Create(fileInfo.FileTitle, fileInfo.ApplicationTitle, fileInfo.ApplicationVersion);
+      DfsBuilder builder = null;
 
-      // Set up the header
-      builder.SetDataType(fileInfo.DataType);
-      builder.SetGeographicalProjection(fileInfo.Projection);
-      builder.SetTemporalAxis(fileInfo.TimeAxis);
-      builder.SetItemStatisticsType(fileInfo.StatsType);
-      builder.DeleteValueByte = fileInfo.DeleteValueByte;
-      builder.DeleteValueDouble = fileInfo.DeleteValueDouble;
-      builder.DeleteValueFloat = fileInfo.DeleteValueFloat;
-      builder.DeleteValueInt = fileInfo.DeleteValueInt;
-      builder.DeleteValueUnsignedInt = fileInfo.DeleteValueUnsignedInt;
-
-      // Transfer compression keys.
-      if (fileInfo.IsFileCompressed)
+      if (!string.IsNullOrEmpty(filediff))
       {
-        int[] xkey;
-        int[] ykey;
-        int[] zkey;
-        fileInfo.GetEncodeKey(out xkey, out ykey, out zkey);
-        builder.SetEncodingKey(xkey, ykey, zkey);
-      }
+        builder = DfsBuilder.Create(fileInfo.FileTitle, fileInfo.ApplicationTitle, fileInfo.ApplicationVersion);
 
-      // Copy custom blocks
-      foreach (IDfsCustomBlock customBlock in fileInfo.CustomBlocks)
-      {
-        builder.AddCustomBlock(customBlock);
+        // Set up the header
+        builder.SetDataType(fileInfo.DataType);
+        builder.SetGeographicalProjection(fileInfo.Projection);
+        builder.SetTemporalAxis(fileInfo.TimeAxis);
+        builder.SetItemStatisticsType(fileInfo.StatsType);
+        builder.DeleteValueByte        = fileInfo.DeleteValueByte;
+        builder.DeleteValueDouble      = fileInfo.DeleteValueDouble;
+        builder.DeleteValueFloat       = fileInfo.DeleteValueFloat;
+        builder.DeleteValueInt         = fileInfo.DeleteValueInt;
+        builder.DeleteValueUnsignedInt = fileInfo.DeleteValueUnsignedInt;
+
+        // Transfer compression keys.
+        if (fileInfo.IsFileCompressed)
+        {
+          int[] xkey;
+          int[] ykey;
+          int[] zkey;
+          fileInfo.GetEncodeKey(out xkey, out ykey, out zkey);
+          builder.SetEncodingKey(xkey, ykey, zkey);
+        }
+
+        // Copy custom blocks
+        foreach (IDfsCustomBlock customBlock in fileInfo.CustomBlocks)
+        {
+          builder.AddCustomBlock(customBlock);
+        }
       }
 
       // Copy dynamic item definitions
@@ -130,22 +155,29 @@ namespace DHI.SDK.Examples
           throw new Exception("Dynamic item must be double or float, item number " + (i + 1) + " is of type " +
                               (itemInfo.DataType));
 
-        builder.AddDynamicItem(itemInfo);
+        builder?.AddDynamicItem(itemInfo);
       }
 
       // Create file
-      builder.CreateFile(filediff);
+      builder?.CreateFile(filediff);
 
-      // Copy over static items from file 1, assuming the static items of file 2 are identical
-      IDfsStaticItem si1;
-      while (null != (si1 = dfs1.ReadStaticItemNext()))
+      if (builder != null)
       {
-        builder.AddStaticItem(si1);
+        // Copy over static items from file 1, assuming the static items of file 2 are identical
+        IDfsStaticItem si1;
+        while (null != (si1 = dfs1.ReadStaticItemNext()))
+        {
+          builder.AddStaticItem(si1);
+        }
       }
 
       // Get the file
-      DfsFile diff = builder.GetFile();
+      DfsFile diff = builder?.GetFile();
 
+      float deleteValueFloat = dfs1.FileInfo.DeleteValueFloat;
+      double deleteValueDouble     = dfs1.FileInfo.DeleteValueDouble;
+
+      int[] deleteValueDiffCount = new int[numItems];
       // Write dynamic data to the file, being the difference between the two
       for (int i = 0; i < numTimes; i++)
       {
@@ -153,41 +185,93 @@ namespace DHI.SDK.Examples
         {
           if (floatItems[j])
           {
+            float deleteValue = deleteValueFloat;
             IDfsItemData<float> data1 = dfs1.ReadItemTimeStepNext() as IDfsItemData<float>;
             IDfsItemData<float> data2 = dfs2.ReadItemTimeStepNext() as IDfsItemData<float>;
             for (int k = 0; k < data1.Data.Length; k++)
             {
-              float valuediff = data1.Data[k] - data2.Data[k];
-              data1.Data[k] = valuediff;
-              float absValueDiff = Math.Abs(valuediff);
-              if (absValueDiff > maxDiff[j])
+              if ((data1.Data[k] == deleteValue) && (data2.Data[k] == deleteValue))
               {
-                maxDiff[j]     = absValueDiff;
-                maxDiffTime[j] = i;
+                // Both has delete values
+                data1.Data[k] = deleteValue;
+              }
+              else if (data1.Data[k] == deleteValue)
+              {
+                // One is delete value, the other is not
+                deleteValueDiffCount[j]++;
+                data1.Data[k] = -data2.Data[k];
                 if (firstDiffTime[j] == -1)
                   firstDiffTime[j] = i;
               }
+              else if (data2.Data[k] == deleteValue)
+              {
+                // One is delete value, the other is not
+                deleteValueDiffCount[j]++;
+                data1.Data[k] = data1.Data[k];
+                if (firstDiffTime[j] == -1)
+                  firstDiffTime[j] = i;
+              }
+              else
+              {
+                // Both has values
+                float valuediff = data1.Data[k] - data2.Data[k];
+                data1.Data[k] = valuediff;
+                float absValueDiff = Math.Abs(valuediff);
+                if (absValueDiff > maxDiff[j])
+                {
+                  maxDiff[j]     = absValueDiff;
+                  maxDiffTime[j] = i;
+                  if (firstDiffTime[j] == -1)
+                    firstDiffTime[j] = i;
+                }
+              }
             }
-            diff.WriteItemTimeStepNext(data1.Time, data1.Data);
+            diff?.WriteItemTimeStepNext(data1.Time, data1.Data);
           }
           else
           {
+            double deleteValue = deleteValueDouble;
             IDfsItemData<double> data1 = dfs1.ReadItemTimeStepNext() as IDfsItemData<double>;
             IDfsItemData<double> data2 = dfs2.ReadItemTimeStepNext() as IDfsItemData<double>;
             for (int k = 0; k < data1.Data.Length; k++)
             {
-              double valuediff = data1.Data[k] - data2.Data[k];
-              data1.Data[k] = valuediff;
-              double absValueDiff = Math.Abs(valuediff);
-              if (absValueDiff > maxDiff[j])
+              if ((data1.Data[k] == deleteValue) && (data2.Data[k] == deleteValue))
               {
-                maxDiff[j]     = absValueDiff;
-                maxDiffTime[j] = i;
+                // Both has delete values
+                data1.Data[k] = deleteValue;
+              }
+              else if (data1.Data[k] == deleteValue)
+              {
+                // One is delete value, the other is not
+                deleteValueDiffCount[j]++;
+                data1.Data[k] = -data2.Data[k];
                 if (firstDiffTime[j] == -1)
                   firstDiffTime[j] = i;
               }
+              else if (data2.Data[k] == deleteValue)
+              {
+                // One is delete value, the other is not
+                deleteValueDiffCount[j]++;
+                data1.Data[k] = data1.Data[k];
+                if (firstDiffTime[j] == -1)
+                  firstDiffTime[j] = i;
+              }
+              else
+              {
+                // Both has values
+                double valuediff = data1.Data[k] - data2.Data[k];
+                data1.Data[k] = valuediff;
+                double absValueDiff = Math.Abs(valuediff);
+                if (absValueDiff > maxDiff[j])
+                {
+                  maxDiff[j]     = absValueDiff;
+                  maxDiffTime[j] = i;
+                  if (firstDiffTime[j] == -1)
+                    firstDiffTime[j] = i;
+                }
+              }
             }
-            diff.WriteItemTimeStepNext(data1.Time, data1.Data);
+            diff?.WriteItemTimeStepNext(data1.Time, data1.Data);
           }
         }
       }
@@ -195,19 +279,23 @@ namespace DHI.SDK.Examples
       System.Console.WriteLine("Difference statistics:");
       for (int i = 0; i < maxDiffTime.Length; i++)
       {
-        if (maxDiffTime[i] < 0)
+        if (firstDiffTime[i] < 0)
         {
           Console.WriteLine("{0,-30}: no difference", dfs1.ItemInfo[i].Name);
         }
         else
         {
-          Console.WriteLine("{0,-30}: Max difference at timestep {1,3}: {2}. First difference at timestep {3}", dfs1.ItemInfo[i].Name, maxDiffTime[i], maxDiff[i], firstDiffTime[i]);
+          if (deleteValueDiffCount[i] == 0)
+            Console.WriteLine("{0,-30}: Max difference at timestep {1,3}: {2}. First difference at timestep {3}.", dfs1.ItemInfo[i].Name, maxDiffTime[i], maxDiff[i], firstDiffTime[i]);
+          else
+            Console.WriteLine("{0,-30}: Max difference at timestep {1,3}: {2}. First difference at timestep {3}. DeleteValue differences: {4}", dfs1.ItemInfo[i].Name, maxDiffTime[i], maxDiff[i], firstDiffTime[i], deleteValueDiffCount[i]);
+          Environment.ExitCode = -5;
         }
       }
 
       dfs1.Close();
       dfs2.Close();
-      diff.Close();
+      diff?.Close();
 
     }
   }

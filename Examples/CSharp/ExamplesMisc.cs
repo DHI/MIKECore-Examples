@@ -100,11 +100,32 @@ namespace DHI.SDK.Examples
       file.Close();
     }
 
+    public static readonly string UsageMergeDfsFileItems = @"
+    -dfsMerge: Merge two or more dfs files into one
+
+        DHI.MikeCore.Util -dfsMerge [outMergeFile] [file1] [file2]
+        DHI.MikeCore.Util -dfsMerge [outMergeFile] [file1] [file2] [file3] ...
+
+        Merge any number of dfs files. The merger is on dynamic item basis, 
+        i.e. add all dynamic items of a number of dfs files to a new dfs file.
+        Static data is copied from [file1].
+
+        It is assumed that all files has the same time stepping layout. It will merge
+        as many time steps as the file with the least number of timesteps.
+
+        If merging one of the specific types of dfs files, dfs0 or dfs1 or dfs2 or dfs3, 
+        the structure of the files must be identical, i.e. the sizes of the axis must equal. 
+        Otherwise, the outcome will not be a valid dfs0/1/2/3 file.
+";
+
+
+
     /// <summary>
     /// Example of how to merge two or more dfs files. The merger is on dynamic item basis, 
     /// i.e. add all dynamic items of a number of dfs files to a new dfs file.
     /// <para>
-    /// It is assumed that all files has the same number of time steps.
+    /// It is assumed that all files has the same time stepping layout. It will merge
+    /// as many time steps as the file with the least number of timesteps.
     /// </para>
     /// <para>
     /// If merging one of the specific types of dfs files, dfs0 or dfs1 or dfs2 or dfs3, 
@@ -156,9 +177,14 @@ namespace DHI.SDK.Examples
         builder.AddCustomBlock(customBlock);
       }
 
+      int minNumTimesteps = int.MaxValue;
+
       // Copy dynamic items for all source files
       for (int j = 0; j < sources.Count; j++)
       {
+        if (sources[j].FileInfo.TimeAxis.NumberOfTimeSteps < minNumTimesteps)
+          minNumTimesteps = sources[j].FileInfo.TimeAxis.NumberOfTimeSteps;
+
         foreach (var itemInfo in sources[j].ItemInfo)
         {
           builder.AddDynamicItem(itemInfo);
@@ -180,7 +206,7 @@ namespace DHI.SDK.Examples
 
       // Copy dynamic item data
       IDfsItemData sourceData;
-      for (int i = 0; i < source.FileInfo.TimeAxis.NumberOfTimeSteps; i++)
+      for (int i = 0; i < minNumTimesteps; i++)
       {
         for (int j = 0; j < sources.Count; j++)
         {

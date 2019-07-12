@@ -32,6 +32,9 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject>DHI.MikeCore.Util.Program</StartupObject>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="DHI.Generic.MikeZero.DFS, Version=17.0.0.0, Culture=neutral, PublicKeyToken=c513450b5d0bf0bf, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -53,11 +56,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\DfsDiff.cs">
+      <Link>DfsDiff.cs</Link>
+    </Compile>
     <Compile Include="..\ExamplesDfs2.cs">
       <Link>ExamplesDfs2.cs</Link>
     </Compile>
     <Compile Include="..\ExamplesDfsu.cs">
       <Link>ExamplesDfsu.cs</Link>
+    </Compile>
+    <Compile Include="..\ExamplesMisc.cs">
+      <Link>ExamplesMisc.cs</Link>
     </Compile>
     <Compile Include="..\Extensions.cs">
       <Link>Extensions.cs</Link>

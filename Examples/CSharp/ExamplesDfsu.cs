@@ -370,7 +370,7 @@ namespace DHI.SDK.Examples
       file.Close();
     }
 
-    public static readonly string ExtractDfsu2DLayerFrom3DUsage = @"
+    public static readonly string UsageExtractDfsu2DLayerFrom3D = @"
     -dfsuExtractLayer: Extract layer from 3D dfsu
 
         DHI.MikeCore.Util -dfsuExtractLayer [filenameDfsu3] [outputFilenameDfsu2] [layerNumber]
@@ -808,7 +808,7 @@ namespace DHI.SDK.Examples
       dfs2.Close();
     }
 
-    public static readonly string ExtractSubareaDfsu2DUsage = @"
+    public static readonly string UsageExtractSubareaDfsu2D = @"
     -dfsuExtractSubArea: Extract subarea of dfsu file
 
         DHI.MikeCore.Util -dfsuExtractSubArea [sourceFilename] [outputFilename] [x1] [y2] [x2] [y2]
