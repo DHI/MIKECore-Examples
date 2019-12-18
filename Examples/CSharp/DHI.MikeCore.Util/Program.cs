@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DHI.SDK.Examples;
+using DHI.MikeCore.Examples;
 
 namespace DHI.MikeCore.Util
 {

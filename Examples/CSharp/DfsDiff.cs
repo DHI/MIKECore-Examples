@@ -1,7 +1,7 @@
 ﻿using System;
 using DHI.Generic.MikeZero.DFS;
 
-namespace DHI.SDK.Examples
+namespace DHI.MikeCore.Examples
 {
   /// <summary>
   /// Class for making a diff-file from two other files that have the same structure

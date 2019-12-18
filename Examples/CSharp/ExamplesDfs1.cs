@@ -2,7 +2,7 @@ using System;
 using DHI.Generic.MikeZero.DFS;
 using DHI.Generic.MikeZero.DFS.dfs123;
 
-namespace DHI.SDK.Examples
+namespace DHI.MikeCore.Examples
 {
   /// <summary>
   /// Class with example methods related to dfs1 files.

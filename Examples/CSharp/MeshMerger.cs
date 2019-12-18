@@ -4,7 +4,7 @@ using System.Linq;
 using DHI.Generic.MikeZero;
 using DHI.Generic.MikeZero.DFS.mesh;
 
-namespace DHI.SDK.Examples
+namespace DHI.MikeCore.Examples
 {
 
   /// <summary>

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using DHI.Generic.MikeZero;
 using DHI.Generic.MikeZero.DFS;
 using DHI.Generic.MikeZero.DFS.dfs123;
@@ -8,7 +7,7 @@ using DHI.Projections;
 // ReSharper disable RedundantAssignment
 #pragma warning disable 168 // disable warning for 'never used' variables in Visual Studio
 
-namespace DHI.SDK.Examples
+namespace DHI.MikeCore.Examples
 {
   /// <summary>
   /// Class with example methods related to dfs2 files.
@@ -25,7 +24,10 @@ namespace DHI.SDK.Examples
       // by having this code in the static constructor.
       // If MIKE Core is x-copy deployed with the application, this is not required.
       if (!DHI.Mike.Install.MikeImport.Setup(17, DHI.Mike.Install.MikeProducts.MikeCore))
-        throw new Exception("Cannot find a proper MIKE installation");
+      {
+        Console.Out.WriteLine("Cannot find a proper MIKE installation - MIKE Core files must be present in local folder");
+        //throw new Exception("Cannot find a proper MIKE installation");
+      }
     }
 
     /// <summary>

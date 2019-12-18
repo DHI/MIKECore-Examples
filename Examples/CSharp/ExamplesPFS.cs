@@ -2,7 +2,7 @@
 using System.Globalization;
 using DHI.PFS;
 
-namespace DHI.SDK.Examples
+namespace DHI.MikeCore.Examples
 {
   public class ExamplesPFS
   {

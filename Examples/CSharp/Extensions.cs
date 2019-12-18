@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace DHI.SDK.Examples
+namespace DHI.MikeCore.Examples
 {
   public static class Extensions
   {

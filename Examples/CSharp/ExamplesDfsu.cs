@@ -7,7 +7,7 @@ using DHI.Generic.MikeZero.DFS.dfs123;
 using DHI.Generic.MikeZero.DFS.dfsu;
 using DHI.Generic.MikeZero.DFS.mesh;
 
-namespace DHI.SDK.Examples
+namespace DHI.MikeCore.Examples
 {
   /// <summary>
   /// Class with example methods related to dfsu files.
@@ -604,7 +604,7 @@ namespace DHI.SDK.Examples
     /// </para>
     /// </summary>
     /// <param name="dfs2Filename">Name of input dfs2 file, e.g. the OresundHD.dfs2</param>
-    /// <param name="meshFilename">Name ou output mesh file</param>
+    /// <param name="meshFilename">Name of output mesh file</param>
     /// <param name="dfsuFilename">Name of output dfsu file</param>
     public static void CreateDfsuFromDfs2(string dfs2Filename, string meshFilename, string dfsuFilename)
     {

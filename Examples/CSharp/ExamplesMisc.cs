@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using DHI.Generic.MikeZero;
 using DHI.Generic.MikeZero.DFS;
 
-namespace DHI.SDK.Examples
+namespace DHI.MikeCore.Examples
 {
 
 

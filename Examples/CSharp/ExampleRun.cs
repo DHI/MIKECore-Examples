@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace DHI.SDK.Examples
+namespace DHI.MikeCore.Examples
 {
   /// <summary>
   /// Class for running one of the examples, used when building an appliation (.exe file)

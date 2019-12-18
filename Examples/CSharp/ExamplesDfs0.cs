@@ -3,7 +3,7 @@ using System.IO;
 using DHI.Generic.MikeZero;
 using DHI.Generic.MikeZero.DFS;
 
-namespace DHI.SDK.Examples
+namespace DHI.MikeCore.Examples
 {
   /// <summary>
   /// Class with example methods related to dfs0 files.

@@ -1,14 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using DHI.Generic.MikeZero.DFS;
-using DHI.Generic.MikeZero.DFS.dfsu;
-using NUnit.Framework;
+﻿using NUnit.Framework;
 
-namespace DHI.SDK.Examples
+namespace DHI.MikeCore.Examples
 {
   /// <summary>
   /// Helper class, running some of the examples as unit tests
@@ -17,10 +9,39 @@ namespace DHI.SDK.Examples
   {
 
     [Test]
-    public void RunMaxVelocityFieldTest()
+    public void RunExamplesPFSTest()
     {
-      ExamplesDfs2.MaxVelocityField(UnitTestHelper.TestDataRoot+ "OresundHD.dfs2", UnitTestHelper.TestDataRoot+ "out_OresundHD-maxVel.dfs2");
+      ExamplesPFS.OpenPFSFile(UnitTestHelper.TestDataRoot + "pfsExample.pfs");
+      ExamplesPFS.PFSBuilderExample(UnitTestHelper.TestDataRoot + "test_pfsBuilderExample.pfs");
     }
 
+    [Test]
+    public void RunExamplesDfs2Test()
+    {
+      ExamplesDfs2.GetjkIndexForGeoCoordinate(UnitTestHelper.TestDataRoot + "OresundHD.dfs2");
+      ExamplesDfs2.MaxVelocityField(UnitTestHelper.TestDataRoot + "OresundHD.dfs2", UnitTestHelper.TestDataRoot + "test_OresundHD-maxVel.dfs2");
+    }
   }
+
+  /// <summary>
+  /// Helper class, running some of the examples as unit tests
+  /// </summary>
+  [TestFixture]
+  public class ChartMapTests
+  {
+    [Test]
+    public void MeshTest()
+    {
+      ChartExamples.MeshTest(true);
+    }
+
+    [Test]
+    public void DfsuTest()
+    {
+      ChartExamples.DfsuTest(true);
+    }
+ 
+  }
+
+
 }
