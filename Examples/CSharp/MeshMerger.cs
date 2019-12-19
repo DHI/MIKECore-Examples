@@ -40,7 +40,10 @@ namespace DHI.MikeCore.Examples
       // by having this code in the static constructor.
       // If MIKE Core is x-copy deployed with the application, this is not required.
       if (!DHI.Mike.Install.MikeImport.Setup(17, DHI.Mike.Install.MikeProducts.MikeCore))
-        throw new Exception("Cannot find a proper MIKE installation");
+      {
+        Console.Out.WriteLine("Cannot find a MIKE installation. Looking for MIKE libraries in local folder");
+        //throw new Exception("Cannot find a proper MIKE installation");
+      }
     }
 
     /// <summary> 

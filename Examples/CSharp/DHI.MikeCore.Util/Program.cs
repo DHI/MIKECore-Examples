@@ -19,8 +19,8 @@ namespace DHI.MikeCore.Util
       // to call it as the first thing in that method using the MIKE libraries. Often this can be achieved
       // by having this code in the static constructor.
       // If MIKE Core is x-copy deployed with the application, this is not required.
-      if (!DHI.Mike.Install.MikeImport.Setup(17, DHI.Mike.Install.MikeProducts.MikeCore))
-        throw new Exception("Cannot find a proper MIKE installation");
+      //if (!DHI.Mike.Install.MikeImport.Setup(17, DHI.Mike.Install.MikeProducts.MikeCore))
+      //  throw new Exception("Cannot find a proper MIKE installation");
     }
 
     public static readonly string usage =

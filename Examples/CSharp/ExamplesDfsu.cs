@@ -17,6 +17,7 @@ namespace DHI.MikeCore.Examples
     /// <summary> Static constructor </summary>
     static ExamplesDfsu()
     {
+#if !XCOPY
       // The setup method will make your application find the MIKE assemblies at runtime.
       // The first call of the setup method takes precedense. Any subsequent calls will be ignored.
       // It must be called BEFORE any method using MIKE libraries is called, i.e. it is not sufficient
@@ -25,6 +26,7 @@ namespace DHI.MikeCore.Examples
       // If MIKE Core is x-copy deployed with the application, this is not required.
       if (!DHI.Mike.Install.MikeImport.Setup(17, DHI.Mike.Install.MikeProducts.MikeCore))
         throw new Exception("Cannot find a proper MIKE installation");
+#endif
     }
 
     /// <summary>

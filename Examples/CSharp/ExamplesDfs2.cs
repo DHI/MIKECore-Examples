@@ -17,6 +17,7 @@ namespace DHI.MikeCore.Examples
     /// <summary> Static constructor </summary>
     static ExamplesDfs2()
     {
+#if !XCOPY
       // The setup method will make your application find the MIKE assemblies at runtime.
       // The first call of the setup method takes precedense. Any subsequent calls will be ignored.
       // It must be called BEFORE any method using MIKE libraries is called, i.e. it is not sufficient
@@ -28,6 +29,7 @@ namespace DHI.MikeCore.Examples
         Console.Out.WriteLine("Cannot find a proper MIKE installation - MIKE Core files must be present in local folder");
         //throw new Exception("Cannot find a proper MIKE installation");
       }
+#endif
     }
 
     /// <summary>
