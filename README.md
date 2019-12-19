@@ -8,7 +8,11 @@ Content:
 In the release zip file there is also (version 1.1.1 and later):
 - bin: C#  assemblies and library files for building and running
 
-Most examples are in C#, located in Examples/CSharp folder
+Most examples are in C#, located in Examples/CSharp folder.
+
+Some prerequisites:
+- Be sure to use 64 bit. For scripting, use the 64 bit version of e.g. Python or MATLAB. When building in Visual Studio or similar, be sure to target x64.
+- The "Microsoft Visual C++ Redistributable" is required. That is installed by all MIKE Products, and also by many other applications made by Visual Studio. If it is not installed, get it from [here](https://visualstudio.microsoft.com/downloads/) or [here](https://support.microsoft.com/en-gb/help/2977003/the-latest-supported-visual-c-downloads).
 
 ## Introduction and Documentation
 An introduction to MIKE Core and its libraries, including more documentation can be found on:
@@ -44,9 +48,10 @@ if (!MikeImport.Setup(17, MikeProducts.MikeCore))
     throw new Exception();
 ```
 
-In case of xcopy deployment, it is possible to specify the root explicitly:
+In case of xcopy deployment, it is possible to specify the root explicitly, as e.g.:
 ```
 MikeImport.SetupInstallRoot(@"C:\Program Files (x86)\DHI\2019");
+MikeImport.SetupInstallRoot(@"C:\folder\with\MIKE\Core\bin");
 ```
 
 This must be called before any method using MIKE components. From C# we recommend doing this in a static constructor, which will also make sure it is only done once.
