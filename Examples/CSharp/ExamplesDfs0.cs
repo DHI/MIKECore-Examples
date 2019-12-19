@@ -19,7 +19,7 @@ namespace DHI.MikeCore.Examples
       // to call it as the first thing in that method using the MIKE libraries. Often this can be achieved
       // by having this code in the static constructor.
       // If MIKE Core is x-copy deployed with the application, this is not required.
-      if (!DHI.Mike.Install.MikeImport.Setup(17, DHI.Mike.Install.MikeProducts.MikeCore))
+      if (!DHI.Mike.Install.MikeImport.Setup(18, DHI.Mike.Install.MikeProducts.MikeCore))
         throw new Exception("Cannot find a proper MIKE installation");
     }
 
@@ -68,7 +68,53 @@ namespace DHI.MikeCore.Examples
         }
       }
 
+      dfs0File.Close();
       return sum;
+    }
+
+    /// <summary>
+    /// Introductory example of how to load a dfs0 file with a non-time axis
+    /// as the primary axis. The important part here is to NOT call
+    /// the <code>data.TimeInSeconds()</code>, because that will fail.
+    /// </summary>
+    /// <param name="filename">path and name of Added_Mass.dfs0 test file</param>
+    public static double ReadNonTimeAxisDfs0(string filename)
+    {
+      // Open the file as a generic dfs file
+      IDfsFile dfs0File = DfsFileFactory.DfsGenericOpen(filename);
+
+      // Header information is contained in the IDfsFileInfo
+      IDfsFileInfo fileInfo = dfs0File.FileInfo;
+      // The TimeAxis is not a time axis, but a regular axis
+      int steps = fileInfo.TimeAxis.NumberOfTimeSteps;                  // 256
+      TimeAxisType timeAxisType = fileInfo.TimeAxis.TimeAxisType;       // TimeNonEquidistant
+      eumUnit timeUnit = fileInfo.TimeAxis.TimeUnit;                    // radian-per-second
+
+      // Information on each of the dynamic items, here the first one
+      IDfsSimpleDynamicItemInfo dynamicItemInfo = dfs0File.ItemInfo[0];
+      string        nameOfFirstDynamicItem = dynamicItemInfo.Name;      // "DOF_1-1"
+      DfsSimpleType typeOfFirstDynamicItem = dynamicItemInfo.DataType;  // Float
+      ValueType     valueType              = dynamicItemInfo.ValueType; // Instantaneous
+
+      // This iterates through all timesteps and items in the file
+      // For performance reasons it is important to iterate over time steps
+      // first and items second.
+      double sum = 0;
+      for (int i = 0; i < steps; i++)
+      {
+        for (int j = 1; j <= dfs0File.ItemInfo.Count; j++)
+        {
+          var data = (IDfsItemData<float>)dfs0File.ReadItemTimeStep(j, i);
+          // The Time axis value is not a time value but in radian-per-second.
+          double axisValue = data.Time;
+          float value = data.Data[0];
+          sum += value;
+        }
+      }
+
+      dfs0File.Close();
+      return sum;
+
     }
 
     /// <summary>
