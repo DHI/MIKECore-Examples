@@ -1,0 +1,1 @@
+zip -r DHI.MikeCore.Util.zip bin Examples TestData -xi Examples/CSharp/bin 
