@@ -153,11 +153,11 @@ namespace DHI.MikeCore.Examples
       dfsuFile.StartDateTime = new DateTime(2019,6,27,13,50,30);
 
       // Make a rotation matrix
-      double rotation = 125.0 / 180.0 * Math.PI;
-      double x1 = Math.Cos(rotation);
-      double y1 = -Math.Sin(rotation);
-      double x2 = Math.Sin(rotation);
-      double y2 = Math.Cos(rotation);
+      double rotation = 125.0 / 180.0 * System.Math.PI;
+      double x1 = System.Math.Cos(rotation);
+      double y1 = -System.Math.Sin(rotation);
+      double x2 = System.Math.Sin(rotation);
+      double y2 = System.Math.Cos(rotation);
 
       // Get the x- and y-coordinates from the file
       double[] x = dfsuFile.X;

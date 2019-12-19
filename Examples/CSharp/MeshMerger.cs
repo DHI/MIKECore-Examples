@@ -514,7 +514,7 @@ boundary nodes can end up in the middle of the mesh.
         Console.Out.WriteLine("Merging completed, output file: "+newMeshFileName);
 
       }
-      catch (Exception ex)
+      catch (Exception)
       {
         Usage();
         throw;

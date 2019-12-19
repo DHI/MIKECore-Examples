@@ -399,7 +399,7 @@ namespace DHI.MikeCore.Examples
             else // (haspq)
             {
               // Calculate u and v from speed and direction of p and q
-              double pqLength = Math.Sqrt(p * p + q * q);
+              double pqLength = System.Math.Sqrt(p * p + q * q);
               u = hasuv ? uItem.Data[j] : speed * p / pqLength;
               v = hasuv ? vItem.Data[j] : speed * q / pqLength;
             }
@@ -419,7 +419,7 @@ namespace DHI.MikeCore.Examples
               u = pItem.Data[j] / d;
               v = qItem.Data[j] / d;
             }
-            speed = Math.Sqrt(u * u + v * v);
+            speed = System.Math.Sqrt(u * u + v * v);
           }
           if (speed > maxSpeed[j])
           {

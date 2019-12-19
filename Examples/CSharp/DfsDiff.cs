@@ -155,11 +155,13 @@ namespace DHI.MikeCore.Examples
           throw new Exception("Dynamic item must be double or float, item number " + (i + 1) + " is of type " +
                               (itemInfo.DataType));
 
-        builder?.AddDynamicItem(itemInfo);
+        if (builder != null)
+          builder.AddDynamicItem(itemInfo);
       }
 
       // Create file
-      builder?.CreateFile(filediff);
+      if (builder != null)
+        builder.CreateFile(filediff);
 
       if (builder != null)
       {
@@ -172,7 +174,7 @@ namespace DHI.MikeCore.Examples
       }
 
       // Get the file
-      DfsFile diff = builder?.GetFile();
+      DfsFile diff = builder != null ? builder.GetFile() : null;
 
       float deleteValueFloat = dfs1.FileInfo.DeleteValueFloat;
       double deleteValueDouble     = dfs1.FileInfo.DeleteValueDouble;
@@ -216,7 +218,7 @@ namespace DHI.MikeCore.Examples
                 // Both has values
                 float valuediff = data1.Data[k] - data2.Data[k];
                 data1.Data[k] = valuediff;
-                float absValueDiff = Math.Abs(valuediff);
+                float absValueDiff = System.Math.Abs(valuediff);
                 if (absValueDiff > maxDiff[j])
                 {
                   maxDiff[j]     = absValueDiff;
@@ -226,7 +228,8 @@ namespace DHI.MikeCore.Examples
                 }
               }
             }
-            diff?.WriteItemTimeStepNext(data1.Time, data1.Data);
+            if (diff != null)
+              diff.WriteItemTimeStepNext(data1.Time, data1.Data);
           }
           else
           {
@@ -261,7 +264,7 @@ namespace DHI.MikeCore.Examples
                 // Both has values
                 double valuediff = data1.Data[k] - data2.Data[k];
                 data1.Data[k] = valuediff;
-                double absValueDiff = Math.Abs(valuediff);
+                double absValueDiff = System.Math.Abs(valuediff);
                 if (absValueDiff > maxDiff[j])
                 {
                   maxDiff[j]     = absValueDiff;
@@ -271,7 +274,8 @@ namespace DHI.MikeCore.Examples
                 }
               }
             }
-            diff?.WriteItemTimeStepNext(data1.Time, data1.Data);
+            if (diff != null)
+              diff.WriteItemTimeStepNext(data1.Time, data1.Data);
           }
         }
       }
@@ -295,7 +299,8 @@ namespace DHI.MikeCore.Examples
 
       dfs1.Close();
       dfs2.Close();
-      diff?.Close();
+      if (diff != null)
+        diff.Close();
 
     }
   }
