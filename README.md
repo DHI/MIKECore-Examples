@@ -19,8 +19,11 @@ An introduction to MIKE Core and its libraries, including more documentation can
 
 http://docs.mikepoweredbydhi.com/core_libraries/core-libraries/
 
-## News for Release 2019
-MIKE .NET assemblies are as of Release 2019 no longer installed in the Global Assembly Cache (GAC), but installed in the MIKE bin folder with the rest of the installed files. This implies that MIKE .NET assemblies may not be found by your script or application.
+## News for Release 2020
+The MIKE Core libraries are now all available as NuGet packages. Get the DHI.MikeCore package at [nuget.org].
+
+## Usage of MIKE Core in .NET environments
+MIKE Core .NET assemblies are (as of Release 2019 an onwards) installed in the MIKE installation bin folder. This implies that MIKE .NET assemblies may not be found by your script or application.
 
 In scripting environments, like Python and MATLAB, there are two options:
 1. Get the DHI.MikeCore.Util release zip file, unzip it, and use the files in the bin folder.
