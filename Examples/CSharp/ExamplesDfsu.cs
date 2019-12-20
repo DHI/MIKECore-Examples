@@ -39,10 +39,6 @@ namespace DHI.MikeCore.Examples
     /// <param name="filename">path and name of OresundHD.dfsu test file</param>
     public static void ReadingDfsuFile(string filename)
     {
-      // This Setup call is required to find the MIKE libraries at runtime.
-      // If MIKE Core is x-copy deployed with the application, this is not required.
-      if (!DHI.Mike.Install.MikeImport.Setup(17, DHI.Mike.Install.MikeProducts.MikeCore))
-        throw new Exception("Cannot find a proper MIKE installation");
 
       IDfsuFile file = DfsuFile.Open(filename);
 
@@ -408,10 +404,6 @@ namespace DHI.MikeCore.Examples
     /// </param>
     public static void ExtractDfsu2DLayerFrom3D(string filenameDfsu3, string filenameDfsu2, int layerNumber)
     {
-      // This Setup call is required to find the MIKE libraries at runtime.
-      // If MIKE Core is x-copy deployed with the application, this is not required.
-      if (!DHI.Mike.Install.MikeImport.Setup(17, DHI.Mike.Install.MikeProducts.MikeCore))
-        throw new Exception("Cannot find a proper MIKE installation");
 
       IDfsuFile dfsu3File = DfsFileFactory.DfsuFileOpen(filenameDfsu3);
 
