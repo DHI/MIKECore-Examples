@@ -102,6 +102,78 @@ namespace DHI.MikeCore.Examples
       file.Close();
     }
 
+    /// <summary>
+    /// Example of how to copy static data to dynamic item data in a Dfs file.
+    /// <para>
+    /// Static data is by default not visible in many tools and editors. This is a way to make static data visible as dynamic data.
+    /// </para>
+    /// </summary>
+    /// <param name="sourceFilename">Path and name of the source dfs file</param>
+    /// <param name="filename">Path and name of the new file to create</param>
+    public static void CopyStaticToDynamicDfsFile(string sourceFilename, string filename)
+    {
+      IDfsFile source = DfsFileFactory.DfsGenericOpen(sourceFilename);
+      IDfsFileInfo fileInfo = source.FileInfo;
+
+      DfsBuilder builder = DfsBuilder.Create(fileInfo.FileTitle, fileInfo.ApplicationTitle, fileInfo.ApplicationVersion);
+
+      // Set up the header
+      builder.SetDataType(fileInfo.DataType);
+      builder.SetGeographicalProjection(fileInfo.Projection);
+      builder.SetTemporalAxis(fileInfo.TimeAxis);
+      builder.SetItemStatisticsType(fileInfo.StatsType);
+      builder.DeleteValueByte = fileInfo.DeleteValueByte;
+      builder.DeleteValueDouble = fileInfo.DeleteValueDouble;
+      builder.DeleteValueFloat = fileInfo.DeleteValueFloat;
+      builder.DeleteValueInt = fileInfo.DeleteValueInt;
+      builder.DeleteValueUnsignedInt = fileInfo.DeleteValueUnsignedInt;
+
+      // Transfer compression keys - if any.
+      if (fileInfo.IsFileCompressed)
+      {
+        int[] xkey;
+        int[] ykey;
+        int[] zkey;
+        fileInfo.GetEncodeKey(out xkey, out ykey, out zkey);
+        builder.SetEncodingKey(xkey, ykey, zkey);
+      }
+
+      // Copy custom blocks - if any
+      foreach (IDfsCustomBlock customBlock in fileInfo.CustomBlocks)
+      {
+        builder.AddCustomBlock(customBlock);
+      }
+
+      // Copy static items
+      IDfsStaticItem sourceStaticItem;
+      while (null != (sourceStaticItem = source.ReadStaticItemNext()))
+      {
+        DfsDynamicItemBuilder dynStatItem = builder.CreateDynamicItemBuilder();
+        dynStatItem.Set(sourceStaticItem.Name, sourceStaticItem.Quantity, sourceStaticItem.DataType);
+        dynStatItem.SetAxis(sourceStaticItem.SpatialAxis);
+        dynStatItem.SetValueType(DataValueType.Instantaneous);
+        builder.AddDynamicItem(dynStatItem.GetDynamicItemInfo());
+      }
+
+      // Create file
+      builder.CreateFile(filename);
+
+      // Get the file
+      DfsFile file = builder.GetFile();
+
+      source.Reset();
+
+      // Copy static data to dynamic item data
+      while (null != (sourceStaticItem = source.ReadStaticItemNext()))
+      {
+        file.WriteItemTimeStepNext(0, sourceStaticItem.Data);
+      }
+
+      source.Close();
+      file.Close();
+    }
+
+
     public static readonly string UsageMergeDfsFileItems = @"
     -dfsMerge: Merge two or more dfs files into one
 
