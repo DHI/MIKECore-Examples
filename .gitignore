@@ -3,3 +3,5 @@ _ReSharper.Caches
 bin
 .vs
 /Examples/CSharp/packages
+x64
+/Examples/C/DHI.MikeCore.CExamples/packages
