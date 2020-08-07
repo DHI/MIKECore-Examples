@@ -1,5 +1,3 @@
-#define _AFXDLL 1
-
 #include "pch.h"
 #include <iostream>
 #include "eum.h"
