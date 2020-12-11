@@ -1,7 +1,8 @@
-obj
-_ReSharper.Caches
 bin
-.vs
-/Examples/CSharp/packages
+obj
 x64
+_ReSharper.Caches
+.vs
 /Examples/C/DHI.MikeCore.CExamples/packages
+*vcxproj.user
+*csproj.user
