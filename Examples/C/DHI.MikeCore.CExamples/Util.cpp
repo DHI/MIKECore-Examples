@@ -30,8 +30,10 @@ void* readStaticItem(LPFILE fp, LPHEAD pdfs, LPCSTR name, SimpleType sitemtype)
   int rc;
 
   LONG          item_type;                     // Item EUM type id
+  LPCTSTR       item_type_str;                 // Name of item type
   LPCTSTR       item_name;                     // Name of item
-  LPCTSTR       item_unit;                     // Item EUM unit string
+  LONG          item_unit;                     // Item EUM unit id
+  LPCTSTR       item_unit_str;                 // Item EUM unit string
   SimpleType    item_datatype;                 // Simple type stored in item, usually float but can be double
   LONG          naxis_unit;                    // Axis EUM unit id
   LPCTSTR       taxis_unit;                    // Axis EUM unit string
@@ -51,7 +53,7 @@ void* readStaticItem(LPFILE fp, LPHEAD pdfs, LPCSTR name, SimpleType sitemtype)
   // Read static item info
   LPITEM static_item;
   static_item = dfsItemS(pvec);
-  rc = dfsGetItemInfo_(static_item, &item_type, &item_name, &item_unit, &item_datatype);
+  rc = dfsGetItemInfo(static_item, &item_type, &item_type_str, &item_name, &item_unit, &item_unit_str, &item_datatype);
   CheckRc(rc, "Error reading static item info");
   int num_elmts = dfsGetItemElements(static_item);
 
@@ -84,7 +86,7 @@ void* readStaticItem(LPFILE fp, LPHEAD pdfs, LPCSTR name, SimpleType sitemtype)
   rc = dfsStaticGetData(pvec, data_topo);
   CheckRc(rc, "Error reading static data");
   rc = dfsStaticDestroy(&pvec);
-  CheckRc(rc, "Error destroying static data");
+  CheckRc(rc, "Error destroying static item");
 
   // Do automatically convert from float to double
   if (item_datatype == UFS_FLOAT && sitemtype == UFS_DOUBLE)

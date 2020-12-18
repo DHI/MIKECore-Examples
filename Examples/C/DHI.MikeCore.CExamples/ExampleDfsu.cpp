@@ -101,8 +101,10 @@ void readDfsu(LPCTSTR filename)
    * Dynamic item information
    ***********************************/
   LONG          item_type;                     // Item EUM type id
+  LPCTSTR       item_type_str;                 // Name of item type
   LPCTSTR       item_name;                     // Name of item
-  LPCTSTR       item_unit;                     // Item EUM unit string
+  LONG          item_unit;                     // Item EUM unit id
+  LPCTSTR       item_unit_str;                 // Item EUM unit string
   SimpleType    item_datatype;                 // Simple type stored in item, usually float but can be double
   float        **item_timestep_dataf;          // Time step data for all items - assuming float
 
@@ -113,7 +115,7 @@ void readDfsu(LPCTSTR filename)
   for (int i_item = 1; i_item <= num_items; i_item++)
   {
     // Name, quantity type and unit, and datatype
-    rc = dfsGetItemInfo_(dfsItemD(pdfs, i_item), &item_type, &item_name, &item_unit, &item_datatype);
+    rc = dfsGetItemInfo(dfsItemD(pdfs, i_item), &item_type, &item_type_str, &item_name, &item_unit, &item_unit_str, &item_datatype);
     CheckRc(rc, "Error reading dynamic item info");
     int item_num_elmts = dfsGetItemElements(dfsItemD(pdfs, i_item));
     printf("Dynamic Item: %s, %i\n", item_name, item_num_elmts);

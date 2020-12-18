@@ -104,8 +104,10 @@ void readDfs(LPCTSTR filename)
    * Dynamic item information
    ***********************************/
   LONG          item_type;                     // Item EUM type id
+  LPCTSTR       item_type_str;                 // Name of item type
   LPCTSTR       item_name;                     // Name of item
-  LPCTSTR       item_unit;                     // Item EUM unit string
+  LONG          item_unit;                     // Item EUM unit id
+  LPCTSTR       item_unit_str;                 // Item EUM unit string
   SimpleType    item_datatype;                 // Simple type stored in item, usually float but can be double
   SpaceAxisType item_axis_type;
   LONG          naxis_unit;                    // Axis EUM unit id
@@ -123,7 +125,7 @@ void readDfs(LPCTSTR filename)
   for (int i_item = 1; i_item <= num_items; i_item++)
   {
     // Name, quantity type and unit, and datatype
-    rc = dfsGetItemInfo_(dfsItemD(pdfs, i_item), &item_type, &item_name, &item_unit, &item_datatype);
+    rc = dfsGetItemInfo(dfsItemD(pdfs, i_item), &item_type, &item_type_str, &item_name, &item_unit, &item_unit_str, &item_datatype);
     CheckRc(rc, "Error reading dynamic item info");
     int item_num_elmts = dfsGetItemElements(dfsItemD(pdfs, i_item));
     printf("Dynamic Item: %s, %i", item_name, item_num_elmts);
@@ -165,8 +167,8 @@ void readDfs(LPCTSTR filename)
       // Defined by a number of (x,y,z) coordinates. 
       // Used by dfs1 files, and some special dfs file types (res1d/res11)
       rc = dfsGetItemAxisNeqD1(dfsItemD(pdfs, i_item), &naxis_unit, &taxis_unit, &n_item, &C1);
-      printf(", NEQ-D1, %li", n_item);
       CheckRc(rc, "Error reading dynamic item axis");
+      printf(", NEQ-D1, %li", n_item);
       break;
     default:
       printf(", Spatial axis not yet implemented: %d\n", item_axis_type);
@@ -185,7 +187,8 @@ void readDfs(LPCTSTR filename)
   {
     LPITEM staticItem;
     staticItem = dfsItemS(pvec);
-    dfsGetItemInfo_(staticItem, &item_type, &item_name, &item_unit, &item_datatype);
+    rc = dfsGetItemInfo(staticItem, &item_type, &item_type_str, &item_name, &item_unit, &item_unit_str, &item_datatype);
+    CheckRc(rc, "Error reading static item info");
     printf("Static Item: %s, %i", item_name, dfsGetItemElements(staticItem));
 
     float* data_topo = NULL;
@@ -196,21 +199,27 @@ void readDfs(LPCTSTR filename)
     switch (static_axis_type = dfsGetItemAxisType(staticItem))
     {
     case F_EQ_AXIS_D2:
-      dfsGetItemAxisEqD2(staticItem, &naxis_unit, &taxis_unit, &n_item, &m_item, &x0, &y0, &dx, &dy);
+      rc = dfsGetItemAxisEqD2(staticItem, &naxis_unit, &taxis_unit, &n_item, &m_item, &x0, &y0, &dx, &dy);
+      CheckRc(rc, "Error reading static item axis");
       data_topo = (float*)malloc(dfsGetItemBytes(staticItem));
-      dfsStaticGetData(pvec, data_topo);
+      rc = dfsStaticGetData(pvec, data_topo);
+      CheckRc(rc, "Error reading static item data");
       printf(", EQ-D2, %li x %li", n_item, m_item);
       break;
     case F_EQ_AXIS_D1:
-      dfsGetItemAxisEqD1(staticItem, &naxis_unit, &taxis_unit, &n_item, &x0, &dx);
+      rc = dfsGetItemAxisEqD1(staticItem, &naxis_unit, &taxis_unit, &n_item, &x0, &dx);
+      CheckRc(rc, "Error reading static item axis");
       data_topo = (float*)malloc(dfsGetItemBytes(staticItem));
-      dfsStaticGetData(pvec, data_topo);
+      rc = dfsStaticGetData(pvec, data_topo);
+      CheckRc(rc, "Error reading static item data");
       printf(", EQ-D1, %li", n_item);
       break;
     case F_NEQ_AXIS_D1:
-      dfsGetItemAxisNeqD1(staticItem, &naxis_unit, &taxis_unit, &n_item, &tC);
+      rc = dfsGetItemAxisNeqD1(staticItem, &naxis_unit, &taxis_unit, &n_item, &tC);
+      CheckRc(rc, "Error reading static item axis");
       data_topo = (float*)malloc(dfsGetItemBytes(staticItem));
-      dfsStaticGetData(pvec, data_topo);
+      rc = dfsStaticGetData(pvec, data_topo);
+      CheckRc(rc, "Error reading static item data");
       printf(", NEQ-D1, %li", n_item);
       break;
     default:
@@ -218,7 +227,8 @@ void readDfs(LPCTSTR filename)
       exit(-1);
     }
     free(data_topo);
-    dfsStaticDestroy(&pvec);
+    rc = dfsStaticDestroy(&pvec);
+    CheckRc(rc, "Error destroying static item");
     printf("\n");
   }
 
