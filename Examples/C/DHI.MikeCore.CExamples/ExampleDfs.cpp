@@ -3,6 +3,7 @@
 #include "eum.h"
 #include "dfsio.h"
 #include "util.h"
+#include <CppUnitTest.h>
 
 /******************************************
  * Example of how to generally read data from a dfs file, 
