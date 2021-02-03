@@ -15,7 +15,7 @@ namespace UnitestForC_MikeCore
   TEST_CLASS(Dfs2_tests)
   {
   public:
-
+    ///Reads and extract data from the dfs2 file "OresundHD.dfs2"
     TEST_METHOD(ReadDfs2Test)
     {
       LPCTSTR fileName = "OresundHD.dfs2";
@@ -198,7 +198,7 @@ namespace UnitestForC_MikeCore
       delete[] outputFullPath;
     }
 
-    /// write a copy of a dfs2 file from after reading its internal components.
+    /// Writes a copy of a dfs2 file from after reading its internal components.
     TEST_METHOD(WriteDfs2FileFromSourceTest)
     {
       LPCTSTR fileName = "OresundHD.dfs2";

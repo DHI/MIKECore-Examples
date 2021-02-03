@@ -41,7 +41,7 @@ namespace UnitestForC_MikeCore
       float num_sigma_layers;
     };
 
-    /// This method reads the file OresundHD.dfsu and create a gnuplot input file plotting the geometry 
+    /// Reads the file OresundHD.dfsu and create a gnuplot input file plotting the geometry 
     TEST_METHOD(ReadDfsuFileTest)
     {
       LPCTSTR fileName = "OresundHD.dfsu";
@@ -117,7 +117,7 @@ namespace UnitestForC_MikeCore
       delete item_timestep_dataf;
     }
 
-    /// write a copy of a dfsu 2D file from after reading its internal components.
+    /// Writes a copy of a dfsu 2D file from after reading its internal components.
     TEST_METHOD(CreateDfsu2DOdenseFromSourceTest)
     {
       LPCTSTR fileName = "OdenseHD2D.dfsu";
