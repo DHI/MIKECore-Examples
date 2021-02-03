@@ -11,24 +11,210 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 extern LPCTSTR TestDataFolder;
 namespace UnitestForC_MikeCore
 {
-  //extern LPCTSTR TestDataFolder;
+
   TEST_CLASS(Dfs2_tests)
   {
   public:
+
+    TEST_METHOD(ReadDfs2Test)
+    {
+      LPCTSTR fileName = "OresundHD.dfs2";
+      char* inputFullPath = new char[_MAX_PATH];
+      snprintf(inputFullPath, _MAX_PATH, "%s%s", TestDataFolder, fileName);
+
+      // dfsDebugOn(true);
+      LPFILE      fp;
+      LPHEAD      pdfs;
+      long rc = dfsFileRead(inputFullPath, &pdfs, &fp);
+      LPVECTOR    pvec;
+      LONG        error;
+      // Read static item
+      LPITEM static_item;
+      pvec = dfsStaticRead(fp, &error);
+      static_item = dfsItemS(pvec);
+      long item_type, item_unit;
+      LPCTSTR item_type_str, item_name, item_unit_str;
+      SimpleType item_datatype;
+      rc = dfsGetItemInfo(static_item, &item_type, &item_type_str, &item_name, &item_unit, &item_unit_str, &item_datatype);
+      CheckRc(rc, "Error reading static item info");
+      LONG          naxis_unit;                    // Axis EUM unit id
+      LPCTSTR       taxis_unit;                    // Axis EUM unit string
+      LONG          n_item, m_item;                // Axis dimension sizes
+      float         x0, y0;                        // Axis start coordinate
+      float         dx, dy;                        // Axis coordinate delta
+      rc = dfsGetItemAxisEqD2(static_item, &naxis_unit, &taxis_unit, &n_item, &m_item, &x0, &y0, &dx, &dy);
+      Assert::AreEqual(900.0f, dx);
+      Assert::AreEqual(900.0f, dy);
+      Assert::AreEqual((long)71, n_item);
+      Assert::AreEqual((long)91, m_item);
+      dfsStaticDestroy(&pvec);
+
+      LPCTSTR start_date;
+      long num_timesteps;
+      LPCTSTR start_time;
+      double tstart;
+      double tstep;
+      double tspan;
+      long neum_unit;
+      long index;
+      ReadTimeAxis(pdfs, &start_date, &num_timesteps, &start_time, &tstart, &tstep, &tspan, &neum_unit, &index);
+      long expectedNbTimeSteps = 13;
+      Assert::AreEqual(expectedNbTimeSteps, num_timesteps);
+      Assert::AreEqual(86400.0, tstep);
+      long expeumUnit = 1400;
+      Assert::AreEqual(expeumUnit, neum_unit);
+      LPCTSTR projection_id;
+      double lon0, lat0, orientation;
+      rc = GetDfsGeoInfo(pdfs, &projection_id, &lon0, &lat0, &orientation);
+      Assert::AreEqual("UTM-33", projection_id);
+
+      long num_items = dfsGetNoOfItems(pdfs);
+      Assert::AreEqual((long)3, num_items);
+      auto item = dfsItemD(pdfs, 1);
+      rc = dfsGetItemInfo(item, &item_type, &item_type_str, &item_name, &item_unit, &item_unit_str, &item_datatype);
+      CheckRc(rc, "Error reading dynamic item info");
+      Assert::AreEqual("H Water Depth m", item_name);
+      Assert::AreEqual("meter", item_unit_str);
+      Assert::AreEqual((long)1000, item_unit);
+      int data_type = (int)item_datatype;
+      Assert::AreEqual(1, data_type);
+      double      time;
+      int item_num_elmts = dfsGetItemElements(dfsItemD(pdfs, 1));
+      float* item_timestep_dataf = new float[item_num_elmts];
+      int ix = 3;
+      int iy = 4;
+      auto index34 = n_item * iy + ix;
+      rc = dfsReadItemTimeStep(pdfs, fp, &time, item_timestep_dataf); //time step 1, item 1
+      char buff[100];
+      snprintf(buff, sizeof(buff), "1. data(3,4) = %g", item_timestep_dataf[index34]);
+      Logger::WriteMessage(buff);
+      rc = dfsReadItemTimeStep(pdfs, fp, &time, item_timestep_dataf); //time step 1, item 2
+      rc = dfsReadItemTimeStep(pdfs, fp, &time, item_timestep_dataf); //time step 1, item 3
+      rc = dfsReadItemTimeStep(pdfs, fp, &time, item_timestep_dataf); //time step 2, item 1
+      snprintf(buff, sizeof(buff), "2. data(3,4) = %g", item_timestep_dataf[index34]);
+      Logger::WriteMessage(buff);
+      rc = dfsReadItemTimeStep(pdfs, fp, &time, item_timestep_dataf); //time step 2, item 2
+      rc = dfsReadItemTimeStep(pdfs, fp, &time, item_timestep_dataf); //time step 2, item 3
+      rc = dfsReadItemTimeStep(pdfs, fp, &time, item_timestep_dataf); //time step 3, item 1
+      snprintf(buff, sizeof(buff), "3. data(3,4) = %g", item_timestep_dataf[index34]);
+      Logger::WriteMessage(buff);
+
+      float value = item_timestep_dataf[index34]; // value for time step 3, item 1
+      Assert::AreEqual(11.3634329f, value);
+      // Close file and destroy header
+      rc = dfsFileClose(pdfs, &fp);
+      dfsHeaderDestroy(&pdfs);
+      delete[] inputFullPath;
+      delete[] item_timestep_dataf;
+    }
+
+    // Write a dfs2 file from scratch, but using a template and data from source file
+    TEST_METHOD(CreateDfs2File)
+    {
+      LPCTSTR fileName = "OresundHD.dfs2";
+      char* inputFullPath = new char[_MAX_PATH];
+      snprintf(inputFullPath, _MAX_PATH, "%s%s", TestDataFolder, fileName);
+
+      LPCTSTR OutfileName = "test_dfs2Oresund.dfs2";
+      char* outputFullPath = new char[_MAX_PATH];
+      snprintf(outputFullPath, _MAX_PATH, "%s%s", TestDataFolder, OutfileName);
+      LPFILE      fp;
+      LPHEAD      pdfs;
+      long rc = dfsFileRead(inputFullPath, &pdfs, &fp);
+
+      LPHEAD pdfsWr; // header for writing
+      LPFILE fpWr;   // filepointer for writing
+
+
+      FileType ft = FileType::F_EQTIME_FIXEDSPACE_ALLITEMS;
+      LPCTSTR title = "";
+      LPCTSTR appTitle = dfsGetAppTitle(pdfs);
+      StatType statT = StatType::F_NO_STAT;
+      rc = dfsHeaderCreate(ft, title, appTitle, 0, 3, statT, &pdfsWr);
+      long num_items = dfsGetNoOfItems(pdfs);
+      float** item_timestep_dataf = new float*[3];
+      rc = dfsSetEqCalendarAxis(pdfsWr, "1993-12-02", "00:00:00", (long)1400, 0.0, 86400.0, 0);
+
+      rc = dfsSetDataType(pdfsWr, (long)0);
+      rc = dfsSetDeleteValFloat(pdfsWr, 1e-35);
+      rc = dfsSetDeleteValDouble(pdfsWr, -1e-255);
+      rc = dfsSetDeleteValByte(pdfsWr, 0);
+      rc = dfsSetDeleteValInt(pdfsWr, 2147483647);
+      rc = dfsSetDeleteValUnsignedInt(pdfsWr, 2147483647);
+      rc = dfsSetDataType(pdfsWr, (long)1);
+      rc = dfsSetGeoInfoUTMProj(pdfsWr, "UTM-33", 12.438741600559766, 55.225707842436385, 326.99999999999955);
+
+      // Set up dynamic items
+      SimpleType st1 = SimpleType::UFS_FLOAT;
+      LPITEM item1 = dfsItemD(pdfsWr, 1);
+      int item_num_elmts = 6461;
+      // Create buffer for when reading data.
+      item_timestep_dataf[0] = new float[item_num_elmts];
+      rc = dfsSetItemInfo(pdfsWr, item1, 100000, "H Water Depth m", 1000, st1);
+      rc = dfsSetItemAxisEqD2(item1, 1000, 71, 91, 0, 0, 900, 900);
+      rc = dfsSetItemAxisOrientation(item1, 0.0, 0.0, 0.0);
+      rc = dfsSetItemRefCoords(item1, 0, 0.0, 0.0);
+
+      LPITEM item2 = dfsItemD(pdfsWr, 2);
+
+      item_timestep_dataf[1] = new float[item_num_elmts];
+      rc = dfsSetItemInfo(pdfsWr, item2, (long)100080, "P Flux m^3/s/m", (long)4700, st1);
+      rc = dfsSetItemAxisEqD2(item2, 1000, 71, 91, 0, 0, 900, 900);
+      rc = dfsSetItemAxisOrientation(item2, 0.0, 0.0, 0.0);
+      rc = dfsSetItemRefCoords(item2, 0, 0.0, 0.0);
+
+      LPITEM item3 = dfsItemD(pdfsWr, 3);
+
+      item_timestep_dataf[2] = new float[item_num_elmts];
+      rc = dfsSetItemInfo(pdfsWr, item3, (long)100080, "Q Flux m^3/s/m", (long)4700, st1);
+      rc = dfsSetItemAxisEqD2(item3, 1000, 71, 91, 0, 0, 900, 900);
+      rc = dfsSetItemAxisOrientation(item3, 0.0, 0.0, 0.0);
+      rc = dfsSetItemRefCoords(item3, 0, 0.0, 0.0);
+
+      float customblock_data_ptr[] = { 327.0, 0.2, -900.0, 10.0, 0.0, 0.0, 0.0 };
+      rc = dfsAddCustomBlock(pdfsWr, st1, "M21_Misc", 7, customblock_data_ptr);
+      rc = dfsFileCreateEx(outputFullPath, pdfsWr, &fpWr, true);
+
+      // Add static items containing bathymetri data, use data from source
+      /***********************************
+       * Geometry information
+       ***********************************/
+      CopyDfsStaticInfo(pdfs, fp, pdfsWr, fpWr);
+      long num_timesteps = 10;
+      CopyTemporalData(pdfs, fp, pdfsWr, fpWr, item_timestep_dataf, num_timesteps, num_items);
+      // Close file and destroy header
+      rc = dfsFileClose(pdfsWr, &fpWr);
+      dfsHeaderDestroy(&pdfsWr);
+
+      // Close file and destroy header
+      rc = dfsFileClose(pdfs, &fp);
+      dfsHeaderDestroy(&pdfs);
+      for (int i_item = 1; i_item <= num_items; i_item++)
+      {
+        delete item_timestep_dataf[i_item - 1];
+      }
+      delete item_timestep_dataf;
+      delete[] inputFullPath;
+      delete[] outputFullPath;
+    }
+
     /// write a copy of a dfs2 file from after reading its internal components.
     TEST_METHOD(WriteDfs2FileFromSourceTest)
     {
       LPCTSTR fileName = "OresundHD.dfs2";
-      inputFullPath = new char[_MAX_PATH];
+      char* inputFullPath = new char[_MAX_PATH];
       snprintf(inputFullPath, _MAX_PATH, "%s%s", TestDataFolder, fileName);
 
-      LPCTSTR OutfileName = "OresundHD_created.dfs2";
+      LPCTSTR OutfileName = "test_OresundHD_fromSource.dfs2";
       char* outputFullPath = new char[_MAX_PATH];
       snprintf(outputFullPath, _MAX_PATH, "%s%s", TestDataFolder, OutfileName);
-      CreateDfs2DFromSource(outputFullPath);
+      CreateDfs2DFromSource(inputFullPath, outputFullPath);
+      delete[] inputFullPath;
+      delete[] outputFullPath;
     }
 
-    void CreateDfs2DFromSource(LPCTSTR outputFullPath)
+
+    void CreateDfs2DFromSource(LPCTSTR inputFullPath, LPCTSTR outputFullPath)
     {
       // dfsDebugOn(true);
       LPFILE      fp;
@@ -44,24 +230,30 @@ namespace UnitestForC_MikeCore
 
     void CreateDfs2DFromSource(LPCTSTR outputFullPath, LPHEAD  pdfsIn, LPFILE fpIn)
     {
-      ReadTimeAxis(pdfsIn);
-
       LPHEAD pdfsWr;
       LPFILE fpWr;
       /***********************************
        * Dynamic item information
        ***********************************/
-      num_items = dfsGetNoOfItems(pdfsIn);
-      item_timestep_dataf = new float*[num_items];
-      CreateHeader(pdfsIn, &pdfsWr);
+      long num_items = dfsGetNoOfItems(pdfsIn);
+      float** item_timestep_dataf = new float*[num_items];
+      CreateHeader(pdfsIn, &pdfsWr, num_items);
+      long num_timesteps;
+      CopyTimeAxis(pdfsIn, pdfsWr, &num_timesteps);
 
-      ReadDfsDataTypes(pdfsIn);
-      ReadDfsGeoInfo(pdfsIn);
+      DeleteValues delVals;
+      ReadDfsDeleteVals(pdfsIn, &delVals);
+      WriteDfsDeleteVals(pdfsWr, delVals);
 
-      CopyDynamicItemInfo(pdfsIn, pdfsWr, item_timestep_dataf);
+      LPCTSTR projection_id;
+      double lon0, lat0, orientation;
+      long rc = GetDfsGeoInfo(pdfsIn, &projection_id, &lon0, &lat0, &orientation);
+      rc = dfsSetGeoInfoUTMProj(pdfsWr, projection_id, lon0, lat0, orientation);
+
+      CopyDynamicItemInfo(pdfsIn, pdfsWr, item_timestep_dataf, num_items);
 
       /****************************************
-       * Geometry sizes - read from custom block "MIKE_FM"
+       * Geometry sizes - read from custom block
        ****************************************/
       CopyDfsCustomBlocks(pdfsIn, pdfsWr);
 
@@ -71,142 +263,36 @@ namespace UnitestForC_MikeCore
        * Geometry information
        ***********************************/
 
-      CopyDfsuStaticInfo(pdfsIn, fpIn, pdfsWr, fpWr);
+      CopyDfsStaticInfo(pdfsIn, fpIn, pdfsWr, fpWr);
 
-      CopyTemporalData(pdfsIn, fpIn, pdfsWr, fpWr);
+      CopyTemporalData(pdfsIn, fpIn, pdfsWr, fpWr, item_timestep_dataf, num_timesteps, num_items);
+
       // Close file and destroy header
-      FreeDataMemory();
       rc = dfsFileClose(pdfsWr, &fpWr);
       dfsHeaderDestroy(&pdfsWr);
+      for (int i_item = 1; i_item <= num_items; i_item++)
+      {
+        delete item_timestep_dataf[i_item - 1];
+      }
+      delete item_timestep_dataf;
     }
 
-    void CreateHeader(LPHEAD pdfsIn, LPHEAD* pdfsWr)
+    void CreateHeader(LPHEAD pdfsIn, LPHEAD* pdfsWr, long num_items)
     {
       FileType ft = FileType::F_EQTIME_FIXEDSPACE_ALLITEMS;
       LPCTSTR title = "";
       LPCTSTR appTitle = dfsGetAppTitle(pdfsIn);
       StatType statT = StatType::F_NO_STAT;
-      rc = dfsHeaderCreate(ft, title, appTitle, 0, num_items, statT, pdfsWr);
-    }
-
-    void ReadDfsDataTypes(LPHEAD pdfsIn)
-    {
-      dataTypeIn = dfsGetDataType(pdfsIn);
-      deleteF = dfsGetDeleteValFloat(pdfsIn);
-      deleteD = dfsGetDeleteValDouble(pdfsIn);
-      deleteByte = dfsGetDeleteValByte(pdfsIn);
-      deleteInt = dfsGetDeleteValInt(pdfsIn);
-      deleteUint = dfsGetDeleteValUnsignedInt(pdfsIn);
+      long rc = dfsHeaderCreate(ft, title, appTitle, 0, num_items, statT, pdfsWr);
     }
 
 
-    void ReadDfsGeoInfo(LPHEAD pdfsIn)
-    {
-      geo_info_type = dfsGetGeoInfoType(pdfsIn);
-      if (geo_info_type == F_UTM_PROJECTION)
-      {
-        rc = dfsGetGeoInfoUTMProj(pdfsIn, &projection_id, &lon0, &lat0, &orientation);
-      }
-      else if (geo_info_type != F_UNDEFINED_GEOINFO)
-        Assert::Fail();
-    }
 
-
-    void CopyDynamicItemInfo(LPHEAD pdfsIn, LPHEAD pdfsWr, float** item_timestep_dataf)
-    {
-      WriteDfsDataTypes(pdfsWr);
-
-      rc = dfsSetGeoInfoUTMProj(pdfsWr, projection_id, lon0, lat0, orientation);
-      rc = dfsSetEqCalendarAxis(pdfsWr, start_date, start_time, ntime_unit, tstart, tstep, 0);
-
-      for (int i_item = 1; i_item <= num_items; i_item++)
-      {
-        LPITEM itemIn = dfsItemD(pdfsIn, i_item);
-        // Name, quantity type and unit, and datatype
-        rc = dfsGetItemInfo(itemIn, &item_type, &item_type_str, &item_name, &item_unit, &item_unit_str, &item_datatype);
-        CheckRc(rc, "Error reading dynamic item info");
-        float x, y, z;
-        dfsGetItemRefCoords(itemIn, &x, &y, &z);
-        int item_num_elmts = dfsGetItemElements(dfsItemD(pdfsIn, i_item));
-        // Create buffer for when reading data.
-        item_timestep_dataf[i_item - 1] = new float[item_num_elmts];
-        LPITEM item1 = dfsItemD(pdfsWr, i_item);
-        rc = dfsSetItemInfo(pdfsWr, item1, item_type, item_name, item_unit, item_datatype);
-        SpaceAxisType  axisIn = dfsGetItemAxisType(itemIn);
-        long jGp, kGp, lGp, mGp;
-        float x0, dx, y0, dy, z0, dz, f0, df;
-        float alpha, phi, theta;
-        Coords* coords;
-        double* xCoords, *yCoords, *zCoords;
-        bool copy = false;
-        switch (axisIn)
-        {
-        case SpaceAxisType::F_UNDEFINED_SAXIS:
-          throw new std::exception("undefined spatial axis");
-        case SpaceAxisType::F_EQ_AXIS_D0:
-          rc = dfsGetItemAxisEqD0(itemIn, &item_unit, &item_unit_str);
-          rc = dfsSetItemAxisEqD0(item1, item_unit);
-          break;
-        case SpaceAxisType::F_EQ_AXIS_D1:
-          rc = dfsGetItemAxisEqD1(itemIn, &item_unit, &item_unit_str, &jGp, &x0, &dx);
-          rc = dfsSetItemAxisEqD1(item1, item_unit, jGp, x0, dx);
-          break;
-        case SpaceAxisType::F_NEQ_AXIS_D1:
-          rc = dfsGetItemAxisNeqD1(itemIn, &item_unit, &item_unit_str, &jGp, &coords);
-          rc = dfsSetItemAxisNeqD1(item1, item_unit, jGp, coords, copy);
-          break;
-        case SpaceAxisType::F_EQ_AXIS_D2:
-          rc = dfsGetItemAxisEqD2(itemIn, &item_unit, &item_unit_str, &jGp, &kGp, &x0, &y0, &dx, &dy);
-          rc = dfsSetItemAxisEqD2(item1, item_unit, jGp, kGp, x0, y0, dx, dy);
-          break;
-        case SpaceAxisType::F_NEQ_AXIS_D2:
-          rc = dfsGetItemAxisNeqD2(itemIn, &item_unit, &item_unit_str, &jGp, &kGp, &xCoords, &yCoords);
-          rc = dfsSetItemAxisNeqD2(item1, item_unit, jGp, kGp, xCoords, yCoords, copy);
-
-          break;
-        case SpaceAxisType::F_EQ_AXIS_D3:
-          rc = dfsGetItemAxisEqD3(itemIn, &item_unit, &item_unit_str, &jGp, &kGp, &lGp, &x0, &y0, &z0, &dx, &dy, &dz);
-          rc = dfsSetItemAxisEqD3(item1, item_unit, jGp, kGp, lGp, x0, y0, z0, dx, dy, dz);
-          break;
-        case SpaceAxisType::F_NEQ_AXIS_D3:
-          rc = dfsGetItemAxisNeqD3(itemIn, &item_unit, &item_unit_str, &jGp, &kGp, &lGp, &xCoords, &yCoords, &zCoords);
-          rc = dfsSetItemAxisNeqD3(item1, item_unit, jGp, kGp, lGp, xCoords, yCoords, zCoords, copy);
-          break;
-        case SpaceAxisType::F_EQ_AXIS_D4:
-          rc = dfsGetItemAxisEqD4(itemIn, &item_unit, &item_unit_str, &jGp, &kGp, &lGp, &mGp, &x0, &y0, &z0, &f0, &dx, &dy, &dz, &df);
-          rc = dfsSetItemAxisEqD4(item1, item_unit, jGp, kGp, lGp, mGp, x0, y0, z0, f0, dx, dy, dz, df);
-          break;
-        case SpaceAxisType::F_CURVE_LINEAR_AXIS_D2:
-          rc = dfsGetItemAxisCurveLinearD2(itemIn, &item_unit, &item_unit_str, &jGp, &kGp, &xCoords, &yCoords);
-          rc = dfsSetItemAxisCurveLinearD2(item1, item_unit, jGp, kGp, xCoords, yCoords, copy);
-          break;
-        case SpaceAxisType::F_CURVE_LINEAR_AXIS_D3:
-          rc = dfsGetItemAxisCurveLinearD3(itemIn, &item_unit, &item_unit_str, &jGp, &kGp, &lGp, &xCoords, &yCoords, &zCoords);
-          rc = dfsSetItemAxisCurveLinearD3(item1, item_unit, jGp, kGp, lGp, xCoords, yCoords, zCoords, copy);
-          break;
-        default:
-          throw new std::exception("spatial axis not supported");
-        }
-        rc = dfsGetItemAxisOrientation(itemIn, &alpha, &phi, &theta);
-        rc = dfsSetItemAxisOrientation(item1, alpha, phi, theta);
-        dfsSetItemRefCoords(item1, x, y, z);
-      }
-    }
-
-    void WriteDfsDataTypes(LPHEAD pdfsWr)
-    {
-      rc = dfsSetDataType(pdfsWr, dataTypeIn);
-      rc = dfsSetDeleteValFloat(pdfsWr, deleteF);
-      rc = dfsSetDeleteValDouble(pdfsWr, deleteD);
-      rc = dfsSetDeleteValByte(pdfsWr, deleteByte);
-      rc = dfsSetDeleteValInt(pdfsWr, deleteInt);
-      rc = dfsSetDeleteValUnsignedInt(pdfsWr, deleteUint);
-    }
 
     void CopyDfsCustomBlocks(LPHEAD pdfsIn, LPHEAD pdfsWr)
     {
       LPBLOCK customblock_ptr;
-      rc = dfsGetCustomBlockRef(pdfsIn, &customblock_ptr);
+      long rc = dfsGetCustomBlockRef(pdfsIn, &customblock_ptr);
       CheckRc(rc, "Error reading custom block");
       // Search for "MIKE_FM" custom block containing int data
       while (customblock_ptr)
@@ -222,148 +308,5 @@ namespace UnitestForC_MikeCore
         rc = dfsAddCustomBlock(pdfsWr, csdata_type, name, size, customblock_data_ptr);
       }
     }
-
-    void CopyDfsuStaticInfo(LPHEAD pdfsIn, LPFILE fpIn, LPHEAD pdfsWr, LPFILE fpWr)
-    {
-      // Read DFSU geometry from static items in DFSU file
-      int nbOfStaticItems = 1;
-      int countStatic = 1;
-      while (countStatic <= nbOfStaticItems)
-      {
-        void* data;
-        LPVECTOR pVecIn = 0;
-        pVecIn = dfsStaticRead(fpIn, &rc);
-        LPITEM static_item = dfsItemS(pVecIn);
-        // Read static item
-        auto memorySize = dfsGetItemBytes(static_item);
-        data = malloc(memorySize);
-        rc = dfsStaticGetData(pVecIn, data);
-        rc = dfsGetItemInfo(static_item, &item_type, &item_type_str, &item_name, &item_unit, &item_unit_str, &item_datatype);
-        long eumStaticUnit;
-        LPCTSTR eumUnitStr;
-        long jStatic, kStatic;
-        float x0Static, dxStatic, y0Static, dyStatic;
-        SpaceAxisType  axisStaticIn = dfsGetItemAxisType(static_item);
-        rc = dfsGetItemAxisEqD2(static_item, &eumStaticUnit, &eumUnitStr, &jStatic, &kStatic, &x0Static, &y0Static, &dxStatic, &dyStatic);
-        float x, y, z;
-        rc = dfsGetItemRefCoords(static_item, &x, &y, &z);
-        float alpha, phi, theta;
-        rc = dfsGetItemAxisOrientation(static_item, &alpha, &phi, &theta);
-        LPVECTOR pVecOut = 0;
-        long io_error = dfsStaticCreate(&pVecOut);
-        rc = dfsSetItemInfo_(pdfsWr, dfsItemS(pVecOut), item_type, item_name, eumUnitStr, item_datatype);
-        dfsSetItemAxisEqD2(dfsItemS(pVecOut), eumStaticUnit, jStatic, kStatic, x0Static, y0Static, dxStatic, dyStatic);
-        dfsSetItemRefCoords(dfsItemS(pVecOut), x, y, z);
-        dfsSetItemAxisOrientation(dfsItemS(pVecOut), alpha, phi, theta);
-        rc = dfsStaticWrite(pVecOut, fpWr, data);
-        dfsStaticDestroy(&pVecOut);
-        dfsStaticDestroy(&pVecIn);
-        countStatic++;
-        free(data);
-      }
-    }
-
-    void CopyTemporalData(LPHEAD pdfsIn, LPFILE fpIn, LPHEAD pdfsWr, LPFILE fpWr)
-    {
-      long current_tstep = 0;
-      double      time;
-      // Loop over the first 10 time steps
-      int tstep_end = num_timesteps > 13 ? 13 : num_timesteps;
-      while (current_tstep < tstep_end)
-      {
-        // Loop over all items
-        for (int i_item = 1; i_item <= num_items; i_item++)
-        {
-          // Read item-timestep where the file pointer points to,
-          // and move the filepointer to the next item-timestep
-          rc = dfsReadItemTimeStep(pdfsIn, fpIn, &time, item_timestep_dataf[i_item - 1]);
-          CheckRc(rc, "Error reading dynamic item data");
-          rc = dfsWriteItemTimeStep(pdfsWr, fpWr, time, item_timestep_dataf[i_item - 1]);
-          // If the temporal axis is equidistant, the time variable is the timestep index value.
-          // If temporal axis is non-equidistant, this is the time from start of the file
-          if (is_time_equidistant)
-            time *= tstep;
-        }
-        current_tstep++;
-      }
-    }
-
-    void ReadTimeAxis(LPHEAD pdfsIn)
-    {
-
-      switch (time_axis_type = dfsGetTimeAxisType(pdfsIn))
-      {
-      case F_TM_EQ_AXIS: // Equidistant time axis
-        is_time_equidistant = true;
-        rc = dfsGetEqTimeAxis(pdfsIn, &ntime_unit, &ttime_Unit, &tstart, &tstep, &num_timesteps, &index);
-        break;
-      case F_TM_NEQ_AXIS: // Non-equidistant time axis
-        rc = dfsGetNeqTimeAxis(pdfsIn, &ntime_unit, &ttime_Unit, &tstart, &tspan, &num_timesteps, &index);
-        break;
-      case F_CAL_EQ_AXIS:  // Equidistant calendar axis
-        is_time_equidistant = true;
-        rc = dfsGetEqCalendarAxis(pdfsIn, &start_date, &start_time, &ntime_unit, &ttime_Unit, &tstart, &tstep, &num_timesteps, &index);
-        break;
-      case F_CAL_NEQ_AXIS: // Non-equidistant calendar axis
-        rc = dfsGetNeqCalendarAxis(pdfsIn, &start_date, &start_time, &ntime_unit, &ttime_Unit, &tstart, &tspan, &num_timesteps, &index);
-        break;
-      default:
-        break;
-      }
-    }
-
-
-
-    void FreeDataMemory()
-    {
-      for (int i_item = 1; i_item <= num_items; i_item++)
-      {
-        delete item_timestep_dataf[i_item - 1];
-      }
-      delete item_timestep_dataf;
-    }
-
-    /// path of the dfs file used as source.
-    char* inputFullPath;
-
-    GeoInfoType   geo_info_type;
-    double      lon0, lat0;                      // Not used for dfsu files
-    double      orientation;                     // Not used for dfsu files
-    LPCTSTR     projection_id;                   // Projection string, either WKT or an abbreviation
-
-    LONG        ntime_unit;                      // Time unit in time axis, EUM unit id
-    LPCTSTR     ttime_Unit;                      // Time unit in time axis, EUM unit string
-    TimeAxisType  time_axis_type;
-    LPCTSTR     start_date, start_time;          // Start date and time for the calendar axes.
-    double      tstart = 0;                      // Start time for the first time step in the file. 
-    double      tstep = 0;                       // Time step size of equidistant axes
-    double      tspan = 0;                       // Time span of non-equidistant axes
-    LONG        num_timesteps = 0;               // Number of time steps in file
-    LONG        index;                           // Index of first time step. Currently not used, always zero.
-    BOOL        is_time_equidistant = false;
-    LONG          item_type;                     // Item EUM type id
-    LPCTSTR       item_type_str;                 // Name of item type
-    LPCTSTR       item_name;                     // Name of item
-    LONG          item_unit;                     // Item EUM unit id
-    LPCTSTR       item_unit_str;                 // Item EUM unit string
-    SimpleType    item_datatype;                 // Simple type stored in item, usually float but can be double
-    float        **item_timestep_dataf;          // Time step data for all items - assuming float
-
-    // file general data
-    long           dataTypeIn;
-    float          deleteF;
-    double         deleteD;
-    char           deleteByte;
-    int            deleteInt;
-    unsigned int   deleteUint;
-    int            num_items;
-
-    /// custom blocks
-    float num_nodes = -1;
-    float num_elmts = -1;
-    float dimension = -1;
-    float max_num_layers = 0;
-    float num_sigma_layers = 0;
-    long rc;
   };
 }
