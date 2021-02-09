@@ -10,5 +10,10 @@
 #define PCH_H
 
 // TODO: add headers that you want to pre-compile here
+// Headers for CppUnitTest
+#pragma once
+#include <stdio.h>
+#include <iostream>
+//#include "targetver.h"
 
 #endif //PCH_H

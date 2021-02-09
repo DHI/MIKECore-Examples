@@ -18,47 +18,49 @@ int LastIndexOf(LPCTSTR s1, char c)
 }
 
 
+
 /******************************************
- * Example of how to generally read data from a dfs file, 
+ * Example of how to generally read data from a dfs file,
  * especially dfs0, dfs1 and dfs2 files.
+ * Can be used as a basis for an executable, however
+ * that requires the project to build an exe and not a dll.
  ******************************************/
 int main(unsigned int argc, _TCHAR  **argv)
 {
-    // Check arguments, must be a file name argument
-    // TODO: Should check that the file is there 
-    if (argc < 2)
-    {
-      printf("missing arguments\n");
-      printf("Usage:  %s filename\n", argv[0]);
-      exit(-1);
-    }
+  // Check arguments, must be a file name argument	
+  // TODO: Should check that the file is there 	
+  if (argc < 2)
+  {
+    printf("missing arguments\n");
+    printf("Usage:  %s filename\n", argv[0]);
+    exit(-1);
+  }
 
-    // Test that EUM library is available
-    LPCTSTR baseUnitStr;
-    LONG baseUnit;
-    eumGetBaseUnit(1002, &baseUnit, &baseUnitStr);
-    printf("Base Unit: %s\n", baseUnitStr);
+  // Test that EUM library is available	
+  LPCTSTR baseUnitStr;
+  LONG baseUnit;
+  eumGetBaseUnit(1002, &baseUnit, &baseUnitStr);
+  printf("Base Unit: %s\n", baseUnitStr);
 
+  // Get filename from arguments	
+  LPCTSTR filename = argv[1];
+  printf("filename = %s\n", filename);
 
-    // Get filename from arguments
-    LPCTSTR filename = argv[1];
-    printf("filename = %s\n", filename);
+  int dotIndex = LastIndexOf(filename, '.');
+  if (dotIndex < 0)
+  {
+    printf("Could not find extension of file = %s\n", filename);
+    return -1;
+  }
 
-    int dotIndex = LastIndexOf(filename, '.');
-    if (dotIndex < 0)
-    {
-      printf("Could not find extension of file = %s\n", filename);
-      return -1;
-    }
-
-    LPCTSTR ext = &filename[dotIndex + 1];
-    if (_strcmpi(ext, "dfsu") == 0)
-    {
-      return readDfsu(filename);
-    }
-    else
-    {
-      return readDfs(filename);
-    }
-
+  LPCTSTR ext = &filename[dotIndex + 1];
+  if (_strcmpi(ext, "dfsu") == 0)
+  {
+    readDfsu(filename);
+  }
+  else
+  {
+    readDfs(filename);
+  }
+  return 0;
 }

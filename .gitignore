@@ -6,3 +6,4 @@ _ReSharper.Caches
 /Examples/C/DHI.MikeCore.CExamples/packages
 *vcxproj.user
 *csproj.user
+*DotSettings.user
