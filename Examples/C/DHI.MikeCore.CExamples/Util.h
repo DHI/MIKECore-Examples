@@ -4,21 +4,29 @@
 #include "eum.h"
 #include <dfsio.h>
 
-// Check return code of dfs methods
+
+/** Check return code of dfs methods */
 void CheckRc(LONG rc, LPCTSTR errMsg);
 
-// Convert float array to double array
+/** Get error string from return code */
+const char* GetRCString(LONG rc);
+
 double* ConvertFloat2Double(float* flt, int size);
 
-// Read static item and return the content of the static item
-// The values should be of type sitemtype. Only conversion from
-// float to double will be performed.
-void* readStaticItem(LPFILE fp, LPHEAD pdfs, LPCSTR name, SimpleType sitemtype);
-
-int GetNbOfStaticItems(LPHEAD pdfsIn, LPFILE fp);
-void CopyTimeAxis(LPHEAD pdfsIn, LPHEAD pdfsWr, long* num_timesteps);
+long GetDfsGeoInfoProjString(LPHEAD pdfs, LPCTSTR* projection_id);
 long GetDfsGeoInfo(LPHEAD pdfsIn, LPCTSTR* projection_id, double* lon0, double* lat0, double* orientation);
-void ReadTimeAxis(LPHEAD pdfsIn, LPCTSTR* start_date, long* num_timesteps, LPCTSTR* start_time, double* tstart, double* tstep, double* tspan, long* neum_unit, long* index);
+
+void GetDfsTimeAxis(LPHEAD pdfsIn, TimeAxisType* taxis_type, long* num_timesteps, 
+                    LPCTSTR* start_date, LPCTSTR* start_time, 
+                    double* tstart, double* tstep, double* tspan,
+                    long* neum_unit, long* index);
+
+void  SetDfsDynamicItemInfo(LPHEAD pdfs, int i_item, LPCSTR item_name, int item_type, int item_unit, SimpleType item_datatype, int size);
+
+void* ReadDfsStaticItem(LPFILE fp, LPHEAD pdfs, LPCSTR name, SimpleType sitemtype, int* size = NULL);
+void  WriteDfsStaticItem(LPFILE fp, LPHEAD pdfs, LPCSTR name, SimpleType sitemtype, int size, void* data);
+int   GetNbOfStaticItems(LPHEAD pdfsIn, LPFILE fp);
+
 
 struct DeleteValues
 {
@@ -29,10 +37,32 @@ struct DeleteValues
   int            deleteInt;
   unsigned int   deleteUint;
 };
-void ReadDfsDeleteVals(LPHEAD pdfsIn, DeleteValues* DelVals);
 
-void WriteDfsDeleteVals(LPHEAD pdfsWr, DeleteValues DelVals);
-void CopyDynamicItemInfo(LPHEAD pdfsIn, LPHEAD pdfsWr, float** item_timestep_dataf, int num_items);
-void CopyDfsStaticInfo(LPHEAD pdfsIn, LPFILE fpIn, LPHEAD pdfsWr, LPFILE fpWr);
-void CopyHeader(LPHEAD pdfsIn, LPHEAD* pdfsWr, long num_items);
-void CopyTemporalData(LPHEAD pdfsIn, LPFILE fpIn, LPHEAD pdfsWr, LPFILE fpWr, float** item_timestep_dataf, long num_timesteps, long num_items);
+
+// Various copy methods, for copying data from one DFS file to another
+
+void GetDfsDeleteVals(LPHEAD pdfsIn, DeleteValues* DelVals);
+void SetDfsDeleteVals(LPHEAD pdfsWr, DeleteValues DelVals);
+
+void CopyDfsHeader(LPHEAD pdfsIn, LPHEAD* pdfsWr, long num_items);
+long CopyDfsTimeAxis(LPHEAD pdfsIn, LPHEAD pdfsWr);
+void CopyDfsDynamicItemInfo(LPHEAD pdfsIn, LPHEAD pdfsWr, int num_items);
+void CopyDfsCustomBlocks(LPHEAD pdfsIn, LPHEAD pdfsWr);
+void CopyDfsStaticItems(LPHEAD pdfsIn, LPFILE fpIn, LPHEAD pdfsWr, LPFILE fpWr);
+void CopyDfsTemporalData(LPHEAD pdfsIn, LPFILE fpIn, LPHEAD pdfsWr, LPFILE fpWr, void** item_timestep_dataf, long num_timesteps, long num_items);
+inline void CopyDfsTemporalData(LPHEAD pdfsIn, LPFILE fpIn, LPHEAD pdfsWr, LPFILE fpWr, float** item_timestep_dataf, long num_timesteps, long num_items)
+{
+  void** item_timestep_data = (void**)item_timestep_dataf;
+  CopyDfsTemporalData(pdfsIn, fpIn, pdfsWr, fpWr, item_timestep_data, num_timesteps, num_items);
+}
+
+
+/** LOG method, redirecting message to log files */
+#define LOG(...) { \
+  char buf[257]; \
+  snprintf(buf, 256, __VA_ARGS__); \
+  Microsoft::VisualStudio::CppUnitTestFramework::Logger::WriteMessage(buf);\
+  }
+
+/** Method returning the full path to the TestData folder, including a final "\" */
+char* TestDataPath();

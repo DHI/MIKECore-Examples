@@ -14,7 +14,6 @@
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 // a global variable so it only has to be setup once
-extern LPCTSTR TestDataFolder;
 namespace UnitestForC_MikeCore
 {
   TEST_CLASS(Util_tests)
@@ -25,43 +24,49 @@ namespace UnitestForC_MikeCore
     TEST_METHOD(GetNbOfStaticItemsDfs0Test)
     {
       LPCTSTR fileName = "data_ndr_roese.dfs0";
-      auto inputFullPath = new char[_MAX_PATH];
-      snprintf(inputFullPath, _MAX_PATH, "%s%s", TestDataFolder, fileName);
+      char inputFullPath[_MAX_PATH];
+      snprintf(inputFullPath, _MAX_PATH, "%s%s", TestDataPath(), fileName);
       LPFILE      fp;
       LPHEAD      pdfs;
       long rc = dfsFileRead(inputFullPath, &pdfs, &fp);
 
       int nbOfStaticItems = GetNbOfStaticItems(pdfs, fp);
       Assert::AreEqual(0, nbOfStaticItems);
-      delete[] inputFullPath;
+
+      rc = dfsFileClose(pdfs, &fp);
+      rc = dfsHeaderDestroy(&pdfs);
     }
 
     TEST_METHOD(GetNbOfStaticItemsDfs2Test)
     {
       LPCTSTR fileName = "OresundHD.dfs2";
-      auto inputFullPath = new char[_MAX_PATH];
-      snprintf(inputFullPath, _MAX_PATH, "%s%s", TestDataFolder, fileName);
+      char inputFullPath[_MAX_PATH];
+      snprintf(inputFullPath, _MAX_PATH, "%s%s", TestDataPath(), fileName);
       LPFILE      fp;
       LPHEAD      pdfs;
       long rc = dfsFileRead(inputFullPath, &pdfs, &fp);
 
       int nbOfStaticItems = GetNbOfStaticItems(pdfs, fp);
       Assert::AreEqual(1, nbOfStaticItems);
-      delete[] inputFullPath;
+
+      rc = dfsFileClose(pdfs, &fp);
+      rc = dfsHeaderDestroy(&pdfs);
     }
 
     TEST_METHOD(GetNbOfStaticItemsDfsUTest)
     {
       LPCTSTR fileName = "OresundHD.dfsu";
-      auto inputFullPath = new char[_MAX_PATH];
-      snprintf(inputFullPath, _MAX_PATH, "%s%s", TestDataFolder, fileName);
+      char inputFullPath[_MAX_PATH];
+      snprintf(inputFullPath, _MAX_PATH, "%s%s", TestDataPath(), fileName);
       LPFILE      fp;
       LPHEAD      pdfs;
       long rc = dfsFileRead(inputFullPath, &pdfs, &fp);
 
       int nbOfStaticItems = GetNbOfStaticItems(pdfs, fp);
       Assert::AreEqual(9, nbOfStaticItems);
-      delete[] inputFullPath;
+
+      rc = dfsFileClose(pdfs, &fp);
+      rc = dfsHeaderDestroy(&pdfs);
     }
 
   };

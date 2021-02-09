@@ -4,13 +4,7 @@
 #include "Util.h"
 #include <CppUnitTest.h>
 
-
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
-
-/// since it is not easy to get relative paths relative to folder located above of the directory tree structure, 
-/// a simple concatenation of strings would do the trick
-/// replace this path with the corresponding location of the files in your PC
-LPCTSTR TestDataFolder = "C:\\Users\\ejq\\OneDrive - DHI\\Documents\\Development\\Rel2021.1\\2021-03\\18507\\Last\\MIKECore-Examples\\TestData\\";
 
 namespace UnitestForC_MikeCore
 {
@@ -18,40 +12,54 @@ namespace UnitestForC_MikeCore
   TEST_CLASS(Dfsu_tests)
   {
   public:
-    struct DfsuStaticData
-    {
-      int*    node_ids;
-      double* node_x;
-      double* node_y;
-      float*  node_z;
-      int*    node_codes;
 
-      int*    elmt_ids;
-      int*    elmt_types;
-      int*    elmt_num_nodes;
-      int*    elmt_conn;
+    /**
+     * Geometry of mesh in DFSU file. For details, read the
+     * "DFS Flexible File Formats, DFSU 2D/3D, Vertical Profile/Column, and Mesh File, Technical Documentation"
+     * https://manuals.mikepoweredbydhi.help/2020/General/FM_FileSpecification.pdf
+     * available from the "MIKE SDK Documentation Index"
+     * https://manuals.mikepoweredbydhi.help/2020/MIKE_SDK.htm
+     */
+    struct MeshGeometry
+    {
+      MeshGeometry() = default;
+
+      int num_nodes = 0;                ///< Number of nodes
+      int num_elmts = 0;                ///< Number of elements
+      int dimension = 0;                ///< Dimension of the file 
+      int max_num_layers = 0;           ///< Maximum number of layers, vertical 
+      int num_sigma_layers = 0;         ///< Number of sigma layers, vertical
+
+      int num_conn = 0;                 ///< Size of elmt_conn array
+
+      int*    node_ids = nullptr;       ///< Node Id's
+      double* node_x = nullptr;         ///< X coordinates of nodes
+      double* node_y = nullptr;         ///< Y Coordinates of nodes
+      float*  node_z = nullptr;         ///< Z Coordinates of nodes
+      int*    node_codes = nullptr;     ///< Node boundary code
+
+      int*    elmt_ids = nullptr;       ///< Element Id's
+      int*    elmt_types = nullptr;     ///< Element Type
+      int*    elmt_num_nodes = nullptr; ///< Number of nodes in each element
+      int*    elmt_conn = nullptr;      ///< Indices of nodes in each element
     };
 
-    struct DfsuCustomBlock
-    {
-      float num_nodes;
-      float num_elmts;
-      float dimension;
-      float max_num_layers;
-      float num_sigma_layers;
-    };
 
-    /// Reads the file OresundHD.dfsu and create a gnuplot input file plotting the geometry 
+    /**
+     * Reads the file OresundHD.dfsu and create a gnuplot input file plotting the geometry 
+     */
     TEST_METHOD(ReadDfsuFileTest)
     {
+
       LPCTSTR fileName = "OresundHD.dfsu";
-      char* inputFullPath = new char[_MAX_PATH];
-      snprintf(inputFullPath, _MAX_PATH, "%s%s", TestDataFolder, fileName);
+      char inputFullPath[_MAX_PATH];
+      snprintf(inputFullPath, _MAX_PATH, "%s%s", TestDataPath(), fileName);
 
       // Open file for reading
       LPFILE      fp;
       LPHEAD      pdfs;
       long rc = dfsFileRead(inputFullPath, &pdfs, &fp);
+      CheckRc(rc, "Error opening file");
 
       // Get some general information on the file
       int app_ver_no = dfsGetAppVersionNo(pdfs);
@@ -59,180 +67,102 @@ namespace UnitestForC_MikeCore
       double double_delete = dfsGetDeleteValDouble(pdfs);
       int dfs_data_type = dfsGetDataType(pdfs);
 
+      if (dfs_data_type != 2001)
+      {
+        LOG("This tool currently only supports standard 2D (horizontal) dfsu files\n");
+        exit(-1);
+      }
+
       /******************************************
        * Geographic information
        ******************************************/
-      num_items = dfsGetNoOfItems(pdfs);
-      float** item_timestep_dataf = new float*[num_items];
-      DeleteValues delVals;
-      ReadDfsDeleteVals(pdfs, &delVals);
       LPCTSTR projection_id;
-      double lon0, lat0, orientation;
-      rc = GetDfsGeoInfo(pdfs, &projection_id, &lon0, &lat0, &orientation);
+      rc = GetDfsGeoInfoProjString(pdfs, &projection_id);
+      CheckRc(rc, "Error reading Geographic information");
+      LOG("Projection string: %s", projection_id);
 
       /****************************************
        * Time axis information - almost all dfsu files are F_CAL_EQ_AXIS
        ****************************************/
-      LPCTSTR start_date;
-      long num_timesteps;
-      LPCTSTR start_time;
-      double tstart;
-      double tstep;
-      double tspan;
-      long neum_unit;
-      long index;
-      ReadTimeAxis(pdfs, &start_date, &num_timesteps, &start_time, &tstart, &tstep, &tspan, &neum_unit, &index);
+      TimeAxisType  time_axis_type;
+      LPCTSTR     start_date, start_time;          // Start date and time for the calendar axes.
+      double      tstart = 0;                      // Start time for the first time step in the file. 
+      double      tstep = 0;                       // Time step size of equidistant axes
+      double      tspan = 0;                       // Time span of non-equidistant axes
+      LONG        num_timesteps = 0;               // Number of time steps in file
+      LONG        index;                           // Index of first time step. Currently not used, always zero.
+      LONG        ntime_unit;                      // Time unit in time axis, EUM unit id
+      LPCTSTR     ttime_Unit;                      // Time unit in time axis, EUM unit string
+      BOOL        is_time_equidistant = false;
+      switch (time_axis_type = dfsGetTimeAxisType(pdfs))
+      {
+      case F_TM_EQ_AXIS: // Equidistant time axis
+        is_time_equidistant = true;
+        rc = dfsGetEqTimeAxis(pdfs, &ntime_unit, &ttime_Unit, &tstart, &tstep, &num_timesteps, &index);
+        CheckRc(rc, "Error reading Equidistant time axis");
+        LOG("Time axis: Equidistant time: no_of_timesteps = %ld, tstep = %f", num_timesteps, tstep);
+        break;
+      case F_TM_NEQ_AXIS: // Non-equidistant time axis
+        rc = dfsGetNeqTimeAxis(pdfs, &ntime_unit, &ttime_Unit, &tstart, &tspan, &num_timesteps, &index);
+        CheckRc(rc, "Error reading Non-equidistant time axis");
+        LOG("Time axis: Non-equidistant time: no_of_timesteps = %ld", num_timesteps);
+        break;
+      case F_CAL_EQ_AXIS:  // Equidistant calendar axis
+        is_time_equidistant = true;
+        rc = dfsGetEqCalendarAxis(pdfs, &start_date, &start_time, &ntime_unit, &ttime_Unit, &tstart, &tstep, &num_timesteps, &index);
+        CheckRc(rc, "Error reading Equidistant calendar axis");
+        LOG("Time axis: Equidistant calendar: no_of_timesteps = %ld, start = %s %s, tstep = %f", num_timesteps, start_date, start_time, tstep);
+        break;
+      case F_CAL_NEQ_AXIS: // Non-equidistant calendar axis
+        rc = dfsGetNeqCalendarAxis(pdfs, &start_date, &start_time, &ntime_unit, &ttime_Unit, &tstart, &tspan, &num_timesteps, &index);
+        CheckRc(rc, "Error reading Non-equidistant calendar axis");
+        LOG("Time axis: Non-equidistant calendar: no_of_timesteps = %ld, start = %s %s", num_timesteps, start_date, start_time);
+        break;
+      default:
+        LOG("Error in time definition\n");
+        exit(-1);
+      }
 
       /***********************************
        * Dynamic item information
        ***********************************/
-      ReadDynamicItemInfo(pdfs, item_timestep_dataf);
+      int num_items = dfsGetNoOfItems(pdfs);
+      LOG("Number of items in file: %d", num_items);
 
+      LONG          item_type;                     // Item EUM type id
+      LPCTSTR       item_type_str;                 // Name of item type
+      LPCTSTR       item_name;                     // Name of item
+      LONG          item_unit;                     // Item EUM unit id
+      LPCTSTR       item_unit_str;                 // Item EUM unit string
+      SimpleType    item_datatype;                 // Simple type stored in item, usually float but can be double
+      float        **item_timestep_dataf;          // Time step data for all items - assuming float
 
-      /****************************************
-       * Geometry sizes - read from custom block "MIKE_FM"
-       ****************************************/
-      DfsuCustomBlock custBlock;
-      ReadMikeFMCustomBlocks(pdfs, &custBlock);
-      DfsuStaticData staticData;
-      ReadStaticItems(pdfs, fp, &staticData);
-      MakeGnuPlotFile(inputFullPath, staticData, custBlock);
+      item_timestep_dataf  = new float*[num_items];
+      LPCTSTR* item_names  = new LPCTSTR[num_items];
 
-
-      /*****************************
-       * Time loop
-       *****************************/
-      ReadTemporalData(pdfs, fp, item_timestep_dataf, num_timesteps);
-
-      // Close file and destroy header
-      rc = dfsFileClose(pdfs, &fp);
-      CheckRc(rc, "Error closing file");
-      rc = dfsHeaderDestroy(&pdfs);
-      CheckRc(rc, "Error destroying header");
-      delete[] inputFullPath;
-      for (int i_item = 1; i_item <= num_items; i_item++)
-      {
-        delete item_timestep_dataf[i_item - 1];
-      }
-      delete item_timestep_dataf;
-    }
-
-    /// Writes a copy of a dfsu 2D file from after reading its internal components.
-    TEST_METHOD(CreateDfsu2DOdenseFromSourceTest)
-    {
-      LPCTSTR fileName = "OdenseHD2D.dfsu";
-      char* inputFullPath = new char[_MAX_PATH];
-      snprintf(inputFullPath, _MAX_PATH, "%s%s", TestDataFolder, fileName);
-
-      LPCTSTR OutfileName = "test_OdenseHD2D_FromSource.dfsu";
-      char* outputFullPath = new char[_MAX_PATH];
-      snprintf(outputFullPath, _MAX_PATH, "%s%s", TestDataFolder, OutfileName);
-      CreateDfsu2DFromSource(inputFullPath, outputFullPath);
-      delete[] outputFullPath;
-      delete[] inputFullPath;
-    }
-
-    void CreateDfsu2DFromSource(LPCTSTR inputFullPath, LPCTSTR outputFullPath)
-    {
-      // dfsDebugOn(true);
-      LPFILE      fp;
-      LPHEAD      pdfs;
-      long rc = dfsFileRead(inputFullPath, &pdfs, &fp);
-
-      CreateDfsuFileFromSource(outputFullPath, pdfs, fp);
-
-      // Close file and destroy header
-      rc = dfsFileClose(pdfs, &fp);
-      dfsHeaderDestroy(&pdfs);
-    }
-
-    void CreateDfsuFileFromSource(LPCTSTR outputFullPath, LPHEAD  pdfsIn, LPFILE fpIn)
-    {
-
-
-      LPHEAD pdfsWr;
-      LPFILE fpWr;
-      /***********************************
-       * Dynamic item information
-       ***********************************/
-      num_items = dfsGetNoOfItems(pdfsIn);
-      float** item_timestep_dataf = new float*[num_items];
-      CopyHeader(pdfsIn, &pdfsWr, num_items);
-      long num_timesteps;
-      CopyTimeAxis(pdfsIn, pdfsWr, &num_timesteps);
-
-      DeleteValues delVals;
-      ReadDfsDeleteVals(pdfsIn, &delVals);
-      WriteDfsDeleteVals(pdfsWr, delVals);
-
-      LPCTSTR projection_id;
-      double lon0, lat0, orientation;
-      long rc = GetDfsGeoInfo(pdfsIn, &projection_id, &lon0, &lat0, &orientation);
-      rc = dfsSetGeoInfoUTMProj(pdfsWr, projection_id, lon0, lat0, orientation);
-
-      CopyDynamicItemInfo(pdfsIn, pdfsWr, item_timestep_dataf, num_items);
-
-      /****************************************
-       * Geometry sizes - read from custom block "MIKE_FM"
-       ****************************************/
-      CopyDfsCustomBlocks(pdfsIn, pdfsWr);
-
-      //create the file to write using the pointers to header
-      rc = dfsFileCreateEx(outputFullPath, pdfsWr, &fpWr, true);
-
-      /***********************************
-       * Geometry information
-       ***********************************/
-
-      CopyDfsStaticInfo(pdfsIn, fpIn, pdfsWr, fpWr);
-
-      CopyTemporalData(pdfsIn, fpIn, pdfsWr, fpWr, item_timestep_dataf, num_timesteps);
-      // Close file and destroy header
-      rc = dfsFileClose(pdfsWr, &fpWr);
-      dfsHeaderDestroy(&pdfsWr);
-      for (int i_item = 1; i_item <= num_items; i_item++)
-      {
-        delete item_timestep_dataf[i_item - 1];
-      }
-      delete item_timestep_dataf;
-    }
-
-    //void CreateHeader(LPHEAD pdfsIn, LPHEAD* pdfsWr)
-    //{
-    //  FileType ft = FileType::F_EQTIME_FIXEDSPACE_ALLITEMS;
-    //  LPCTSTR title = "";
-    //  LPCTSTR appTitle = dfsGetAppTitle(pdfsIn);
-    //  StatType statT = StatType::F_NO_STAT;
-    //  long rc = dfsHeaderCreate(ft, title, appTitle, 0, num_items, statT, pdfsWr);
-    //}
-
-    void ReadDynamicItemInfo(LPHEAD pdfs, float** item_timestep_dataf)
-    {
-      long rc;
-      char buff[100];
-      snprintf(buff, sizeof(buff), "Number of items in file: %d", num_items);
-      Logger::WriteMessage(buff);
-      // Buffer arrays, used when reading data. dfsu always stores floats
-      item_timestep_dataf = new float*[num_items];
-      long item_type, item_unit;
-      LPCTSTR item_type_str, item_name, item_unit_str;
-      SimpleType item_datatype;
       for (int i_item = 1; i_item <= num_items; i_item++)
       {
         // Name, quantity type and unit, and datatype
         rc = dfsGetItemInfo(dfsItemD(pdfs, i_item), &item_type, &item_type_str, &item_name, &item_unit, &item_unit_str, &item_datatype);
         CheckRc(rc, "Error reading dynamic item info");
         int item_num_elmts = dfsGetItemElements(dfsItemD(pdfs, i_item));
-        snprintf(buff, sizeof(buff), "Dynamic Item: %s, unit: %s,  %i elements\n", item_name, item_unit_str, item_num_elmts);
-        Logger::WriteMessage(buff);
+        LOG("Dynamic Item: %s, unit: %s,  %i elements", item_name, item_unit_str, item_num_elmts);
 
-        // Create buffer for when reading data.
+        // Store item names and create buffer for when reading data.
+        item_names[i_item - 1] = item_name;
         item_timestep_dataf[i_item - 1] = new float[item_num_elmts];
       }
-    }
 
-    void ReadTemporalData(LPHEAD pdfs, LPFILE fp, float** item_timestep_dataf, long num_timesteps)
-    {
+      /****************************************
+       * Read DFSU mesh geometry - stored in custom block and static item
+       ****************************************/
+      MeshGeometry mesh;
+      ReadDfsuGeometry(pdfs, fp, &mesh);
+      MakeGnuPlotFile(inputFullPath, mesh);
+
+      /*****************************
+       * Time loop
+       *****************************/
       // Data are stored in the file in item major order
       // i.e. for each time step, all items are stored in order.
       // To read specific time steps or items, you reposition the file pointer using:
@@ -240,149 +170,243 @@ namespace UnitestForC_MikeCore
       //   dfsFindItemDynamic(pdfs, fp, timestepIndex, itemNumber);
       // The first will position the file pointer at the first item of that timestep
       // The second will position the file pointer at the specified timestep and item
-      long rc;
-      char buff[100];
       long current_tstep = 0;
       double      time;
       // Loop over the first 10 time steps
       int tstep_end = num_timesteps > 10 ? 10 : num_timesteps;
-      long item_type, item_unit;
-      LPCTSTR item_type_str, item_name, item_unit_str;
-      SimpleType item_datatype;
       while (current_tstep < tstep_end)
       {
         // Loop over all items
         for (int i_item = 1; i_item <= num_items; i_item++)
         {
-          // Name, quantity type and unit, and datatype
           // Read item-timestep where the file pointer points to,
           // and move the filepointer to the next item-timestep
           rc = dfsReadItemTimeStep(pdfs, fp, &time, item_timestep_dataf[i_item - 1]);
-          CheckRc(rc, "Error reading dynamic item dCopyDynamicItemInfoata");
+          CheckRc(rc, "Error reading dynamic item data");
           // If the temporal axis is equidistant, the time variable is the timestep index value.
+          // If temporal axis is non-equidistant, this is the time from start of the file
+          if (is_time_equidistant)
+            time *= tstep;
         }
 
         // Print out time of time step, relative to start time and in time unit of axis
-        snprintf(buff, sizeof(buff), "time = %lf", time);
-        Logger::WriteMessage(buff);
+        LOG("time = %lf", time);
         // Print out first item value for all items
         for (int i_item = 1; i_item <= num_items; i_item++)
         {
-          rc = dfsGetItemInfo(dfsItemD(pdfs, i_item), &item_type, &item_type_str, &item_name, &item_unit, &item_unit_str, &item_datatype);
-          snprintf(buff, sizeof(buff), "%s: %f,", item_name, item_timestep_dataf[i_item - 1][0]);
-          Logger::WriteMessage(buff);
+          LOG("  %20s = %f,", item_names[i_item-1], item_timestep_dataf[i_item-1][0]);
         }
         current_tstep++;
       }
-    }
 
-
-    void CopyDfsCustomBlocks(LPHEAD pdfsIn, LPHEAD pdfsWr)
-    {
-      LPBLOCK customblock_ptr;
-      long rc = dfsGetCustomBlockRef(pdfsIn, &customblock_ptr);
-      CheckRc(rc, "Error reading custom block");
-      // Search for "MIKE_FM" custom block containing int data
-      while (customblock_ptr)
+      // Clean up
+      Cleanup(&mesh);
+      for (int i_item = 1; i_item <= num_items; i_item++)
       {
-        SimpleType csdata_type;
-        LPCTSTR name;
-        LONG size;
-        void* customblock_data_ptr;
-        rc = dfsGetCustomBlock(customblock_ptr, &csdata_type, &name,
-          &size, &customblock_data_ptr, &customblock_ptr);
-        CheckRc(rc, "Error reading custom block");
-
-        rc = dfsAddCustomBlock(pdfsWr, csdata_type, name, size, customblock_data_ptr);
+        delete[] item_timestep_dataf[i_item - 1];
       }
+      delete[] item_timestep_dataf;
+
+      // Close file and destroy header
+      rc = dfsFileClose(pdfs, &fp);
+      CheckRc(rc, "Error closing file");
+      rc = dfsHeaderDestroy(&pdfs);
+      CheckRc(rc, "Error destroying header");
+
     }
 
-    void ReadMikeFMCustomBlocks(LPHEAD pdfsIn, DfsuCustomBlock* custBlock)
+
+    /// Writes a copy of a dfsu 2D file from after reading its internal components.
+    TEST_METHOD(CreateDfsu2DOdenseFromSourceTest)
     {
+      LPCTSTR fileName = "OdenseHD2D.dfsu";
+      char inputFullPath[_MAX_PATH];
+      snprintf(inputFullPath, _MAX_PATH, "%s%s", TestDataPath(), fileName);
+
+      LPCTSTR OutfileName = "test_OdenseHD2D_Ccreate.dfsu";
+      char outputFullPath[_MAX_PATH];
+      snprintf(outputFullPath, _MAX_PATH, "%s%s", TestDataPath(), OutfileName);
+
+      CreateDfsu2DFromSource(inputFullPath, outputFullPath);
+    }
+
+    void CreateDfsu2DFromSource(LPCTSTR inputFullPath, LPCTSTR outputFullPath)
+    {
+      LPFILE      fpIn;
+      LPHEAD      pdfsIn;
+      long rc = dfsFileRead(inputFullPath, &pdfsIn, &fpIn);
+      CheckRc(rc, "Error reading file");
+
+      // Read a bit of data from the input file
+      long num_items = dfsGetNoOfItems(pdfsIn);
+      MeshGeometry mesh;
+      ReadDfsuGeometry(pdfsIn, fpIn, &mesh);
+
+      LPHEAD pdfsWr;
+      rc = dfsHeaderCreate(FileType::F_EQTIME_FIXEDSPACE_ALLITEMS, 
+                                "Area Series", "MIKE Core C SDK", 
+                                1900, num_items, StatType::F_NO_STAT, &pdfsWr);
+      CheckRc(rc, "Error creating header");
+      // Data type is always 2001 for 2D dfsu files
+      rc = dfsSetDataType(pdfsWr, 2001);
+      CheckRc(rc, "Error setting data type");
+
+      rc = dfsSetEqCalendarAxis(pdfsWr, "2002-01-03", "00:00:00", 1400, 0, 86400, 0);
+      CheckRc(rc, "Error setting time axis");
+      rc = dfsSetDeleteValFloat(pdfsWr, 1e-35f);
+      CheckRc(rc, "Error setting deletevalue");
+      rc = dfsSetGeoInfoUTMProj(pdfsWr, "UTM-33", 15, 0, 0);
+      CheckRc(rc, "Error setting projection");
+
+      /***********************************
+       * Dynamic item information
+       ***********************************/
+
+      SetDfsDynamicItemInfo(pdfsWr, 1, "Surface elevation", 100078, 1000, UFS_FLOAT, mesh.num_elmts);
+      SetDfsDynamicItemInfo(pdfsWr, 2, "Depth averaged U velocity", 100269, 2000, UFS_FLOAT, mesh.num_elmts);
+      SetDfsDynamicItemInfo(pdfsWr, 3, "Depth averaged V velocity", 100270, 2000, UFS_FLOAT, mesh.num_elmts);
+
+      /****************************************
+       * Geometry sizes - write custom block "MIKE_FM"
+       ****************************************/
+      WriteDfsuGeometryHeader(pdfsWr, &mesh);
+
+      /****************************************
+       * Create the file
+       ****************************************/
+      LPFILE fpWr;
+      rc = dfsFileCreate(outputFullPath, pdfsWr, &fpWr);
+      CheckRc(rc, "Error creating file");
+
+      /***********************************
+       * Geometry information - write mesh to static item
+       ***********************************/
+      WriteDfsuGeometryStatic(pdfsWr, fpWr, &mesh);
+
+      /***********************************
+       * Write dynamic item-timestep data, copy from source file
+       ***********************************/
+      // All items are element based, so reuse elmtData array for all items
+      float* item_timestep_dataf[3];
+      float* elmtData = new float[mesh.num_elmts];
+      item_timestep_dataf[0] = elmtData;
+      item_timestep_dataf[1] = elmtData;
+      item_timestep_dataf[2] = elmtData;
+
+      CopyDfsTemporalData(pdfsIn, fpIn, pdfsWr, fpWr, item_timestep_dataf, 13, 3);
+
+      /***********************************
+       * Close file and destroy header
+       ***********************************/
+      rc = dfsFileClose(pdfsWr, &fpWr); CheckRc(rc, "Error closing file");
+      rc = dfsHeaderDestroy(&pdfsWr);   CheckRc(rc, "Error destroying header");
+      rc = dfsFileClose(pdfsIn, &fpIn); CheckRc(rc, "Error closing file");
+      rc = dfsHeaderDestroy(&pdfsIn);   CheckRc(rc, "Error destroying header");
+      Cleanup(&mesh);
+      delete[] elmtData;
+
+    }
+
+    /**
+     * Read Geometry from DFSU file:
+     * Mesh sizes are read from custom block "MIKE_FM"
+     * Mesh definition are read from static items
+     */
+    void ReadDfsuGeometry(LPHEAD pdfs, LPFILE fp, MeshGeometry* mesh)
+    {
+      // Get reference to the first custom block
       LPBLOCK customblock_ptr;
-      long rc = dfsGetCustomBlockRef(pdfsIn, &customblock_ptr);
+      long rc = dfsGetCustomBlockRef(pdfs, &customblock_ptr);
       CheckRc(rc, "Error reading custom block");
       // Search for "MIKE_FM" custom block containing int data
-    //  int num_nodes, num_elmts;
-    //  int num_sigma_layers, dimension, max_num_layers;
       while (customblock_ptr)
       {
-        SimpleType csdata_type;
-        LPCTSTR name;
-        LONG size;
-        void* customblock_data_ptr;
+        SimpleType csdata_type;      // Type of data stored in custom block
+        LPCTSTR name;                // Name of custom block
+        LONG size;                   // Number of values in custom block
+        void* customblock_data_ptr;  // custom block data, updated with every call below to next custom block
         rc = dfsGetCustomBlock(customblock_ptr, &csdata_type, &name,
-          &size, &customblock_data_ptr, &customblock_ptr);
+                               &size, &customblock_data_ptr, &customblock_ptr);
         CheckRc(rc, "Error reading custom block");
         if (0 == strcmp(name, "MIKE_FM") && csdata_type == UFS_INT)
         {
-          int* intData = (int*)customblock_data_ptr;
-          custBlock->num_nodes = intData[0];
-          custBlock->num_elmts = intData[1];
-          custBlock->dimension = intData[2];
-          int max_num_layers = intData[3];
+          int* intData         = (int*)customblock_data_ptr;
+          mesh->num_nodes      = intData[0];
+          mesh->num_elmts      = intData[1];
+          mesh->dimension      = intData[2];
+          mesh->max_num_layers = intData[3];
           if (size < 5)
-            custBlock->num_sigma_layers = max_num_layers;
+            mesh->num_sigma_layers = mesh->max_num_layers;
           else
-            custBlock->num_sigma_layers = intData[4];
+            mesh->num_sigma_layers = intData[4];
           break;
         }
       }
-      if (custBlock->num_nodes < 0)
+      if (mesh->num_nodes < 0)
       {
         Logger::WriteMessage("Error in Geometry definition: Could not find custom block \"MIKE_FM\"\n");
         exit(-1);
       }
-      if (custBlock->dimension != 2 || custBlock->max_num_layers > 0 || custBlock->num_sigma_layers > 0)
+      if (mesh->dimension != 2 || mesh->max_num_layers > 0 || mesh->num_sigma_layers > 0)
       {
         Logger::WriteMessage("This tool currently only supports standard 2D (horizontal) dfsu files\n");
         exit(-1);
       }
+
+      // Read mesh geometry from static items in DFSU file
+      mesh->node_ids       = (int*)    ReadDfsStaticItem(fp, pdfs, "Node id", UFS_INT);
+      mesh->node_x         = (double*) ReadDfsStaticItem(fp, pdfs, "X-coord", UFS_DOUBLE);
+      mesh->node_y         = (double*) ReadDfsStaticItem(fp, pdfs, "Y-coord", UFS_DOUBLE);
+      mesh->node_z         = (float*)  ReadDfsStaticItem(fp, pdfs, "Z-coord", UFS_FLOAT);
+      mesh->node_codes     = (int*)    ReadDfsStaticItem(fp, pdfs, "Code", UFS_INT);
+
+      mesh->elmt_ids       = (int*)    ReadDfsStaticItem(fp, pdfs, "Element id", UFS_INT);
+      mesh->elmt_types     = (int*)    ReadDfsStaticItem(fp, pdfs, "Element type", UFS_INT);
+      mesh->elmt_num_nodes = (int*)    ReadDfsStaticItem(fp, pdfs, "No of nodes", UFS_INT);
+      mesh->elmt_conn      = (int*)    ReadDfsStaticItem(fp, pdfs, "Connectivity", UFS_INT, &(mesh->num_conn));
     }
 
-    void CopyTemporalData(LPHEAD pdfsIn, LPFILE fpIn, LPHEAD pdfsWr, LPFILE fpWr, float** item_timestep_dataf, long num_timesteps)
+    /**
+     * Write Geometry to DFSU file:
+     * Mesh sizes are written to custom block "MIKE_FM"
+     */
+    void WriteDfsuGeometryHeader(LPHEAD pdfs, MeshGeometry* mesh)
     {
-      long rc;
-      long current_tstep = 0;
-      double      time;
-      // Loop over the first 10 time steps
-      int tstep_end = num_timesteps > 13 ? 13 : num_timesteps;
-      while (current_tstep < tstep_end)
-      {
-        // Loop over all items
-        for (int i_item = 1; i_item <= num_items; i_item++)
-        {
-          // Read item-timestep where the file pointer points to,
-          // and move the filepointer to the next item-timestep
-          rc = dfsReadItemTimeStep(pdfsIn, fpIn, &time, item_timestep_dataf[i_item - 1]);
-          CheckRc(rc, "Error reading dynamic item data");
-          rc = dfsWriteItemTimeStep(pdfsWr, fpWr, time, item_timestep_dataf[i_item - 1]);
-          // If the temporal axis is equidistant, the time variable is the timestep index value.
-          // If temporal axis is non-equidistant, this is the time from start of the file
-          //if (is_time_equidistant)
-          //  time *= tstep;
-        }
-        current_tstep++;
-      }
+      int custblock_data[5];
+      custblock_data[0] = mesh->num_nodes;
+      custblock_data[1] = mesh->num_elmts;
+      custblock_data[2] = mesh->dimension;
+      custblock_data[3] = mesh->max_num_layers;
+      custblock_data[4] = mesh->num_sigma_layers;
+      long rc = dfsAddCustomBlock(pdfs, UFS_INT, "MIKE_FM", 5, custblock_data);
+      CheckRc(rc, "Error adding MIKE_FM Custom block");
     }
 
-
-    void ReadStaticItems(LPHEAD pdfs, LPFILE fp, DfsuStaticData* staticData)
+    /**
+     * Write Geometry to DFSU file:
+     * Mesh definition are written to static items
+     */
+    void WriteDfsuGeometryStatic(LPHEAD pdfs, LPFILE fp, MeshGeometry* mesh)
     {
-      // Read DFSU geometry from static items in DFSU file
-      staticData->node_ids = (int*)readStaticItem(fp, pdfs, "Node id", UFS_INT);
-      staticData->node_x = (double*)readStaticItem(fp, pdfs, "X-coord", UFS_DOUBLE);
-      staticData->node_y = (double*)readStaticItem(fp, pdfs, "Y-coord", UFS_DOUBLE);
-      staticData->node_z = (float*)readStaticItem(fp, pdfs, "Z-coord", UFS_FLOAT);
-      staticData->node_codes = (int*)readStaticItem(fp, pdfs, "Code", UFS_INT);
+      // Write mesh geometry from static items in DFSU file
+      WriteDfsStaticItem(fp, pdfs, "Node id"     , UFS_INT   , mesh->num_nodes, mesh->node_ids      );
+      WriteDfsStaticItem(fp, pdfs, "X-coord"     , UFS_DOUBLE, mesh->num_nodes, mesh->node_x        );
+      WriteDfsStaticItem(fp, pdfs, "Y-coord"     , UFS_DOUBLE, mesh->num_nodes, mesh->node_y        );
+      WriteDfsStaticItem(fp, pdfs, "Z-coord"     , UFS_FLOAT , mesh->num_nodes, mesh->node_z        );
+      WriteDfsStaticItem(fp, pdfs, "Code"        , UFS_INT   , mesh->num_nodes, mesh->node_codes    );
 
-      staticData->elmt_ids = (int*)readStaticItem(fp, pdfs, "Element id", UFS_INT);
-      staticData->elmt_types = (int*)readStaticItem(fp, pdfs, "Element type", UFS_INT);
-      staticData->elmt_num_nodes = (int*)readStaticItem(fp, pdfs, "No of nodes", UFS_INT);
-      staticData->elmt_conn = (int*)readStaticItem(fp, pdfs, "Connectivity", UFS_INT);
+      WriteDfsStaticItem(fp, pdfs, "Element id"  , UFS_INT   , mesh->num_elmts, mesh->elmt_ids      );
+      WriteDfsStaticItem(fp, pdfs, "Element type", UFS_INT   , mesh->num_elmts, mesh->elmt_types    );
+      WriteDfsStaticItem(fp, pdfs, "No of nodes" , UFS_INT   , mesh->num_elmts, mesh->elmt_num_nodes);
+      WriteDfsStaticItem(fp, pdfs, "Connectivity", UFS_INT   , mesh->num_conn,  mesh->elmt_conn     );
     }
 
-    void MakeGnuPlotFile(char* inputFullPath, DfsuStaticData staticData, DfsuCustomBlock custBlock)
+
+    /***
+     * Example of how to navigate the Geometry of a DFSU file.
+     * This method writes the DFSU mesh to a text file in a gnuplot compatible format
+     */
+    void MakeGnuPlotFile(char* inputFullPath, MeshGeometry mesh)
     {
 
       /***********************************
@@ -406,21 +430,21 @@ namespace UnitestForC_MikeCore
       int curr_elmt_conn_index = 0;
       int nodeIndex;
       // Loop over all elements
-      for (int i = 0; i < custBlock.num_elmts; i++)
+      for (int i = 0; i < mesh.num_elmts; i++)
       {
-        fprintf(fgp_ptr, "# Element %6d, id = %6d\n", i + 1, staticData.elmt_ids[i]);
-        int num_nodes_in_elmt = staticData.elmt_num_nodes[i];
+        fprintf(fgp_ptr, "# Element %6d, id = %6d\n", i + 1, mesh.elmt_ids[i]);
+        int num_nodes_in_elmt = mesh.elmt_num_nodes[i];
         // Loop over all nodes in element, print out node coordinate for all nodes in the element
         for (int j = 0; j < num_nodes_in_elmt; j++)
         {
           // Lookup nodes of element in connectivity table (elmt_conn).
           // The elmt_conn is 1-based, so subtract 1 to get zero-based indices
-          nodeIndex = staticData.elmt_conn[curr_elmt_conn_index + j] - 1;
-          fprintf(fgp_ptr, "%f %f\n", staticData.node_x[nodeIndex], staticData.node_y[nodeIndex]);
+          nodeIndex = mesh.elmt_conn[curr_elmt_conn_index + j] - 1;
+          fprintf(fgp_ptr, "%f %f\n", mesh.node_x[nodeIndex], mesh.node_y[nodeIndex]);
         }
         // Print out the first element-node coordinate again, to close the polygon
-        nodeIndex = staticData.elmt_conn[curr_elmt_conn_index] - 1;
-        fprintf(fgp_ptr, "%f %f\n", staticData.node_x[nodeIndex], staticData.node_y[nodeIndex]);
+        nodeIndex = mesh.elmt_conn[curr_elmt_conn_index] - 1;
+        fprintf(fgp_ptr, "%f %f\n", mesh.node_x[nodeIndex], mesh.node_y[nodeIndex]);
         // Empty line to tell gnuplot that a new polygon is coming
         fprintf(fgp_ptr, "\n");
         // Prepare for next element
@@ -430,13 +454,18 @@ namespace UnitestForC_MikeCore
       fclose(fgp_ptr);
     }
 
-    /// file deleteValues
-    long           dataTypeIn;
-    float          deleteF;
-    double         deleteD;
-    char           deleteByte;
-    int            deleteInt;
-    unsigned int   deleteUint;
-    int            num_items;
+    void Cleanup(MeshGeometry* mesh)
+    {
+      free(mesh->node_ids);
+      free(mesh->node_x);
+      free(mesh->node_y);
+      free(mesh->node_z);
+      free(mesh->node_codes);
+      free(mesh->elmt_ids);
+      free(mesh->elmt_types);
+      free(mesh->elmt_num_nodes);
+      free(mesh->elmt_conn);
+    }
+
   };
 }
