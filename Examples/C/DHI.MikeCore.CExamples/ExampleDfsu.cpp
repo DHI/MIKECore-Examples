@@ -6,6 +6,7 @@
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
+
 namespace UnitestForC_MikeCore
 {
 
@@ -55,6 +56,11 @@ namespace UnitestForC_MikeCore
       char inputFullPath[_MAX_PATH];
       snprintf(inputFullPath, _MAX_PATH, "%s%s", TestDataPath(), fileName);
 
+      ReadDfsuFile(inputFullPath);
+    }
+
+    static void ReadDfsuFile(LPCTSTR inputFullPath)
+    {
       // Open file for reading
       LPFILE      fp;
       LPHEAD      pdfs;
@@ -230,7 +236,7 @@ namespace UnitestForC_MikeCore
       CreateDfsu2DFromSource(inputFullPath, outputFullPath);
     }
 
-    void CreateDfsu2DFromSource(LPCTSTR inputFullPath, LPCTSTR outputFullPath)
+    static void CreateDfsu2DFromSource(LPCTSTR inputFullPath, LPCTSTR outputFullPath)
     {
       LPFILE      fpIn;
       LPHEAD      pdfsIn;
@@ -312,7 +318,7 @@ namespace UnitestForC_MikeCore
      * Mesh sizes are read from custom block "MIKE_FM"
      * Mesh definition are read from static items
      */
-    void ReadDfsuGeometry(LPHEAD pdfs, LPFILE fp, MeshGeometry* mesh)
+    static void ReadDfsuGeometry(LPHEAD pdfs, LPFILE fp, MeshGeometry* mesh)
     {
       // Get reference to the first custom block
       LPBLOCK customblock_ptr;
@@ -370,7 +376,7 @@ namespace UnitestForC_MikeCore
      * Write Geometry to DFSU file:
      * Mesh sizes are written to custom block "MIKE_FM"
      */
-    void WriteDfsuGeometryHeader(LPHEAD pdfs, MeshGeometry* mesh)
+    static void WriteDfsuGeometryHeader(LPHEAD pdfs, MeshGeometry* mesh)
     {
       int custblock_data[5];
       custblock_data[0] = mesh->num_nodes;
@@ -386,7 +392,7 @@ namespace UnitestForC_MikeCore
      * Write Geometry to DFSU file:
      * Mesh definition are written to static items
      */
-    void WriteDfsuGeometryStatic(LPHEAD pdfs, LPFILE fp, MeshGeometry* mesh)
+    static void WriteDfsuGeometryStatic(LPHEAD pdfs, LPFILE fp, MeshGeometry* mesh)
     {
       // Write mesh geometry from static items in DFSU file
       WriteDfsStaticItem(fp, pdfs, "Node id"     , UFS_INT   , mesh->num_nodes, mesh->node_ids      );
@@ -406,7 +412,7 @@ namespace UnitestForC_MikeCore
      * Example of how to navigate the Geometry of a DFSU file.
      * This method writes the DFSU mesh to a text file in a gnuplot compatible format
      */
-    void MakeGnuPlotFile(char* inputFullPath, MeshGeometry mesh)
+    static void MakeGnuPlotFile(LPCTSTR inputFullPath, MeshGeometry mesh)
     {
 
       /***********************************
@@ -454,7 +460,7 @@ namespace UnitestForC_MikeCore
       fclose(fgp_ptr);
     }
 
-    void Cleanup(MeshGeometry* mesh)
+    static void Cleanup(MeshGeometry* mesh)
     {
       free(mesh->node_ids);
       free(mesh->node_x);
@@ -469,3 +475,9 @@ namespace UnitestForC_MikeCore
 
   };
 }
+
+void readDfsu(LPCTSTR filename)
+{
+  UnitestForC_MikeCore::Dfsu_tests::ReadDfsuFile(filename);
+}
+

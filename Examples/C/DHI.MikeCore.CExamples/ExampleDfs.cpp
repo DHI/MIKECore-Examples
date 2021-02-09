@@ -29,7 +29,7 @@ namespace UnitestForC_MikeCore
     }
 
     /** Read DFS file, going generically through all types of data in the DFS file. */
-    void readDfs(LPCTSTR filename)
+    static void readDfs(LPCTSTR filename)
     {
       int rc;
 
@@ -476,3 +476,7 @@ namespace UnitestForC_MikeCore
 }
 
 
+void readDfs(LPCTSTR filename)
+{
+  UnitestForC_MikeCore::Dfs_tests::readDfs(filename);
+}

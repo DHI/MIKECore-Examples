@@ -182,7 +182,7 @@ namespace UnitestForC_MikeCore
       rc = dfsAddCustomBlock(pdfsWr, st1, "M21_Misc", 7, customblock_data_ptr);
 
       // Create file
-      rc = dfsFileCreateEx(outputFullPath, pdfsWr, &fpWr, true);
+      rc = dfsFileCreate(outputFullPath, pdfsWr, &fpWr);
 
       // Add static items containing bathymetri data, use data from source
       CopyDfsStaticItems(pdfs, fp, pdfsWr, fpWr);
