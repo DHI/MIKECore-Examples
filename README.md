@@ -22,6 +22,7 @@ http://docs.mikepoweredbydhi.com/core_libraries/core-libraries/
 ## Changelog
 
 For changes to MIKE Core components in general, visit:
+
 http://docs.mikepoweredbydhi.com/core_libraries/core-changelog/
 
 The list here contains only major updates to the MIKE Core Examples.
@@ -53,5 +54,5 @@ If building the application in other ways, you can get the DHI.MikeCore.Util rel
 
 ## Use DHI.Mike.Install to locate the MIKE installation bin folder.
 
-Check out (DHI.Mike.Install)[http://docs.mikepoweredbydhi.com/core_libraries/core-mikeinstall/]
+Check out [DHI.Mike.Install](http://docs.mikepoweredbydhi.com/core_libraries/core-mikeinstall/)
 on how to locate the MIKE installation bin folder.
