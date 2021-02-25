@@ -6,7 +6,7 @@ Content:
 - TestData: Data of various formats.
 
 In the release zip file there is also (version 1.1.1 and later):
-- bin: C#  assemblies and library files for building and running
+- bin: .NET assemblies and native libraries and files for building and running.
 
 Most examples are in C#, located in Examples/CSharp folder.
 
@@ -19,15 +19,29 @@ An introduction to MIKE Core and its libraries, including more documentation can
 
 http://docs.mikepoweredbydhi.com/core_libraries/core-libraries/
 
-## News for Release 2020
-The MIKE Core libraries are now all available as NuGet packages. Get the DHI.MikeCore package at http://nuget.org.
+## Changelog
+
+For changes to MIKE Core components in general, visit:
+http://docs.mikepoweredbydhi.com/core_libraries/core-changelog/
+
+The list here contains only major updates to the MIKE Core Examples.
+
+- 2021-02-09: 
+    - Adding C/C++ examples. 
+    - Updating NuGet to version 19.0 (MIKE Release 2021)
+- 2019-05-06: 
+    - Updating to version 18.1 (MIKE Release 2020 Update 1)
+- 2019-12-20: 
+    - Update references to use NuGet packages. 
+    - Updating to version 18.0 (MIKE Release 2020)
 
 ## Usage of MIKE Core in .NET environments
+
 MIKE Core .NET assemblies are (as of Release 2019 an onwards) installed in the MIKE installation bin folder. This implies that MIKE .NET assemblies may not be found by your script or application.
 
 In scripting environments, like Python and MATLAB, there are two options:
 1. Get the DHI.MikeCore.Util release zip file, unzip it, and use the files in the bin folder.
-2. Install a MIKE product (e.g. MIKE SDK), and use DHI.Mike.Install to locate the MIKE installation bin folder.
+2. Install a MIKE product (e.g. MIKE SDK), and use `DHI.Mike.Install` to locate the MIKE installation bin folder.
 
 When building and deploying an application or a tool, there are two options:
 1. Deploy your application and all the MIKE Core files together.
@@ -38,30 +52,6 @@ If building the application in Visual Studio, when referencing the MIKE Core com
 If building the application in other ways, you can get the DHI.MikeCore.Util release zip file, unzip it, and include all  the files in the bin folder together with your application.
 
 ## Use DHI.Mike.Install to locate the MIKE installation bin folder.
-To help script or application to locate .NET assemblies in the MIKE bin folder, we have added a single assembly to the GAC which will do the trick. It is called `DHI.Mike.Install`. It is required to use one of the Setup methods from there before any usage of MIKE components in scripts or tools. In C# it looks like
 
-```
-MikeImport.SetupLatest(MikeProducts.MikeCore)
-```
-
-If more than one version of MIKE Software is installed, it is possible to load a specific version - with a bit of error checking:
-
-```
-if (!MikeImport.Setup(17, MikeProducts.MikeCore))
-    throw new Exception();
-```
-
-In case of xcopy deployment, it is possible to specify the root explicitly, as e.g.:
-```
-MikeImport.SetupInstallRoot(@"C:\Program Files (x86)\DHI\2019");
-MikeImport.SetupInstallRoot(@"C:\folder\with\MIKE\Core\bin");
-```
-
-This must be called before any method using MIKE components. From C# we recommend doing this in a static constructor, which will also make sure it is only done once.
-
-Also, make sure to work in a 64 bit environment, since the MIKE Core components are only available in 64 bit versions.
-
-The way that the .NET runtime searches for .NET assemblies is different from how a "normal"/unmanaged/C/C++ program searches for dll's and files. The .NET runtime does NOT use the PATH environment variable, so updating that does NOT help. Details on how the .NET runtime searches for assemblies can be found here:
-
-https://docs.microsoft.com/en-us/dotnet/framework/deployment/how-the-runtime-locates-assemblies
-
+Check out (DHI.Mike.Install)[http://docs.mikepoweredbydhi.com/core_libraries/core-mikeinstall/]
+on how to locate the MIKE installation bin folder.
