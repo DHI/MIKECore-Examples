@@ -112,18 +112,18 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="packages\DHI.DHIfl.19.0.0\Build\native\DHI.DHIfl.targets" Condition="Exists('packages\DHI.DHIfl.19.0.0\Build\native\DHI.DHIfl.targets')" />
-    <Import Project="packages\DHI.PFS.19.0.0\Build\native\DHI.PFS.targets" Condition="Exists('packages\DHI.PFS.19.0.0\Build\native\DHI.PFS.targets')" />
-    <Import Project="packages\DHI.EUM.19.0.0\Build\native\DHI.EUM.targets" Condition="Exists('packages\DHI.EUM.19.0.0\Build\native\DHI.EUM.targets')" />
-    <Import Project="packages\DHI.DFS.19.0.0\Build\native\DHI.DFS.targets" Condition="Exists('packages\DHI.DFS.19.0.0\Build\native\DHI.DFS.targets')" />
+    <Import Project="packages\DHI.DHIfl.19.1.0\Build\native\DHI.DHIfl.targets" Condition="Exists('packages\DHI.DHIfl.19.1.0\Build\native\DHI.DHIfl.targets')" />
+    <Import Project="packages\DHI.PFS.19.1.0\Build\native\DHI.PFS.targets" Condition="Exists('packages\DHI.PFS.19.1.0\Build\native\DHI.PFS.targets')" />
+    <Import Project="packages\DHI.EUM.19.1.0\Build\native\DHI.EUM.targets" Condition="Exists('packages\DHI.EUM.19.1.0\Build\native\DHI.EUM.targets')" />
+    <Import Project="packages\DHI.DFS.19.1.0\Build\native\DHI.DFS.targets" Condition="Exists('packages\DHI.DFS.19.1.0\Build\native\DHI.DFS.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('packages\DHI.DHIfl.19.0.0\Build\native\DHI.DHIfl.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\DHI.DHIfl.19.0.0\Build\native\DHI.DHIfl.targets'))" />
-    <Error Condition="!Exists('packages\DHI.PFS.19.0.0\Build\native\DHI.PFS.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\DHI.PFS.19.0.0\Build\native\DHI.PFS.targets'))" />
-    <Error Condition="!Exists('packages\DHI.EUM.19.0.0\Build\native\DHI.EUM.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\DHI.EUM.19.0.0\Build\native\DHI.EUM.targets'))" />
-    <Error Condition="!Exists('packages\DHI.DFS.19.0.0\Build\native\DHI.DFS.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\DHI.DFS.19.0.0\Build\native\DHI.DFS.targets'))" />
+    <Error Condition="!Exists('packages\DHI.DHIfl.19.1.0\Build\native\DHI.DHIfl.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\DHI.DHIfl.19.1.0\Build\native\DHI.DHIfl.targets'))" />
+    <Error Condition="!Exists('packages\DHI.PFS.19.1.0\Build\native\DHI.PFS.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\DHI.PFS.19.1.0\Build\native\DHI.PFS.targets'))" />
+    <Error Condition="!Exists('packages\DHI.EUM.19.1.0\Build\native\DHI.EUM.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\DHI.EUM.19.1.0\Build\native\DHI.EUM.targets'))" />
+    <Error Condition="!Exists('packages\DHI.DFS.19.1.0\Build\native\DHI.DFS.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\DHI.DFS.19.1.0\Build\native\DHI.DFS.targets'))" />
   </Target>
 </Project>
