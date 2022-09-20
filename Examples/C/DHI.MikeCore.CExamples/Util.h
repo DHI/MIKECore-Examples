@@ -62,6 +62,7 @@ inline void CopyDfsTemporalData(LPHEAD pdfsIn, LPFILE fpIn, LPHEAD pdfsWr, LPFIL
   char buf[257]; \
   snprintf(buf, 256, __VA_ARGS__); \
   Microsoft::VisualStudio::CppUnitTestFramework::Logger::WriteMessage(buf);\
+  Microsoft::VisualStudio::CppUnitTestFramework::Logger::WriteMessage("\r\n");\
   }
 
 /** Method returning the full path to the TestData folder, including a final "\" */
