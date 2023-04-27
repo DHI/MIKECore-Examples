@@ -316,7 +316,7 @@ namespace DHI.MikeCore.Examples
 
       // Time is not important, since it is equidistant
       double[] times = new double[10];
-      double[,] values = new double[10,2];
+      double[,] values = new double[10,2] ;
 
       // Write data to file
       values[0, 0] = 0f;  // water level
@@ -344,7 +344,72 @@ namespace DHI.MikeCore.Examples
 
       file.Close();
     }
-  
-  
+
+
+    /// <summary>
+    /// Creates a dfs0 file, with an none-time axis and one dynamic item.
+    /// </summary>
+    /// <param name="filename">Name of new file</param>
+    public static void CreateNonTimeDfs0File(string filename)
+    {
+      DfsFactory factory = new DfsFactory();
+      DfsBuilder builder = DfsBuilder.Create("NonTemporalAxisTest", "dfs Timeseries Bridge", 10000);
+
+      // Set up file header
+      builder.SetDataType(0);
+      builder.SetGeographicalProjection(factory.CreateProjectionUndefined());
+      builder.SetTemporalAxis(factory.CreateTemporalNonEqTimeAxis(eumUnit.eumUradianPerSecond));
+      builder.SetItemStatisticsType(StatType.RegularStat);
+
+      for (int i = 0; i < 5; i++)
+      {
+        // Set up item
+        DfsDynamicItemBuilder item1 = builder.CreateDynamicItemBuilder();
+        item1.Set($"DOF_ 1- {i + 1}", eumQuantity.Create(eumItem.eumIAddedMassTT, eumUnit.eumUkilogram), DfsSimpleType.Float);
+        item1.SetValueType(DataValueType.Instantaneous);
+        item1.SetAxis(factory.CreateAxisEqD0());
+        builder.AddDynamicItem(item1.GetDynamicItemInfo());
+      }
+      // Create file
+      builder.CreateFile(filename);
+      IDfsFile file = builder.GetFile();
+
+      // xAxis that is now in radian-per-second
+      double[] xAxis = new double[]
+      {
+        0.01227 ,
+        0.024542,
+        0.036814,
+        0.049086,
+        0.061358,
+        0.07363 ,
+        0.085902,
+        0.098174,
+        0.110446,
+        0.122718,
+        0.13499,
+      };
+      double[,] values = new double[,]
+      {
+        {6.43398e+06, 0, 4.22223e+06, 0, 2.0662e+09},
+        {6.48818e+06, 0, 4.24876e+06, 0, 2.08669e+09},
+        {6.54238e+06, 0, 4.24876e+06, 0, 2.10717e+09},
+        {6.54238e+06, 0, 4.24876e+06, 0, 2.10717e+09},
+        {6.60721e+06, 0, 4.24876e+06, 0, 2.13186e+09},
+        {6.60721e+06, 0, 4.24876e+06, 0, 2.13186e+09},
+        {6.60721e+06, 0, 4.28636e+06, 0, 2.13186e+09},
+        {6.60721e+06, 0, 4.28636e+06, 0, 2.13186e+09},
+        {6.5287e+06 , 0, 4.28636e+06, 0, 2.1177e+09},
+        {6.37136e+06, 0, 4.28636e+06, 0, 2.0661e+09},
+        {6.17745e+06, 0, 4.21825e+06, 0, 2.00136e+09},
+      };
+
+      // Write data to file
+      DHI.Generic.MikeZero.DFS.dfs0.Dfs0Util.WriteDfs0DataDouble(file, xAxis, values);
+
+      file.Close();
+    }
+
+
   }
 }
